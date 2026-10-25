@@ -9,6 +9,7 @@ const {
     stripPrefix,
     telegramRequestId,
     splitMessage,
+    markdownToTelegramHtml,
 } = require('../lib/telegram');
 
 test('allowed users: ids and names, "@" and case ignored, comments skipped', () => {
@@ -66,4 +67,22 @@ test('long answers are split into Telegram-sized parts, preferring line breaks',
     assert.deepEqual(splitMessage(text, 40), ['a'.repeat(30), 'b'.repeat(30)]);
     const parts = splitMessage('x'.repeat(95), 40);
     assert.deepEqual(parts.map(p => p.length), [40, 40, 15]);
+});
+
+test('Markdown becomes Telegram HTML; everything else is escaped', () => {
+    const h = markdownToTelegramHtml;
+    assert.equal(h('**test**'), '<b>test</b>');
+    assert.equal(h('*kursiv* und `hm-rpc.0.x`'), '<i>kursiv</i> und <code>hm-rpc.0.x</code>');
+    assert.equal(h('a<b & c>d'), 'a&lt;b &amp; c&gt;d');
+    assert.equal(h('## Titel\n- eins\n* zwei'), '<b>Titel</b>\n• eins\n• zwei');
+    assert.equal(h('[Link](https://example.com)'), '<a href="https://example.com">Link</a>');
+    assert.equal(h('```js\nlet a = 1 < 2;\n```'), '<pre>let a = 1 &lt; 2;</pre>');
+    assert.equal(h('| a | b |\n|---|---|\n| 1 | 2 |\nweiter'), '<pre>| a | b |\n| 1 | 2 |</pre>\nweiter');
+});
+
+test('Markdown conversion leaves ids and arithmetic alone', () => {
+    const h = markdownToTelegramHtml;
+    assert.equal(h('2*3*4'), '2*3*4');
+    assert.equal(h('hm_rpc_0__x__y'), 'hm_rpc_0__x__y');
+    assert.equal(h('`a<b`'), '<code>a&lt;b</code>');
 });

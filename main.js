@@ -13,6 +13,8 @@ const {
     stripPrefix,
     telegramRequestId,
     splitMessage,
+    markdownToTelegramHtml,
+    TELEGRAM_INSTRUCTIONS,
 } = require('./lib/telegram');
 
 /**
@@ -164,7 +166,7 @@ class PiAgent extends utils.Adapter {
         // Chats keep their own conversation; a model change in the settings reaches them too.
         for (const id of Object.values(this.chats)) {
             const conversation = await this.harness.conversation(id, this.context);
-            await conversation?.configure({ model: this.model }, this.context);
+            await conversation?.configure({ model: this.model, instructions: TELEGRAM_INSTRUCTIONS }, this.context);
         }
         await this.subscribeForeignStatesAsync(`${this.telegram}.communicate.request`);
         const prefix = String(this.config.telegramPrefix || '').trim();
@@ -191,7 +193,7 @@ class PiAgent extends utils.Adapter {
             }
         }
         const created = await this.harness.createConversation(
-            { ownership: { kind: 'ownerless' }, agent: { model: this.model } },
+            { ownership: { kind: 'ownerless' }, agent: { model: this.model, instructions: TELEGRAM_INSTRUCTIONS } },
             this.context,
         );
         this.chats[target.chatId] = created.id;
@@ -314,7 +316,12 @@ class PiAgent extends utils.Adapter {
     async deliver(target, text) {
         if (target.kind === 'telegram') {
             for (const part of splitMessage(text)) {
-                this.sendTo(this.telegram, 'send', { text: part, chatId: target.chatId });
+                // Telegram shows Markdown literally; its HTML mode renders bold, italic, code and links
+                this.sendTo(this.telegram, 'send', {
+                    text: markdownToTelegramHtml(part),
+                    chatId: target.chatId,
+                    parse_mode: 'HTML',
+                });
             }
             return;
         }

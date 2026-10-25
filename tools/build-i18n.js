@@ -254,7 +254,22 @@ const DESC = [
     'Стійкий LLM-агент, який читає та керує станами ioBroker і переживає перезапуски та збої',
     '可持久运行的 LLM 代理，读取并控制 ioBroker 状态，可在重启和崩溃后恢复',
 ];
-const NEWS = [
+/** common.news per version, newest first; the repository builder keeps at most seven. */
+const NEWS = {};
+NEWS['0.0.2'] = [
+    'Telegram answers keep their formatting (bold, italic, code, links); released with npm provenance',
+    'Telegram-Antworten behalten ihre Formatierung (fett, kursiv, Code, Links); mit npm-Provenance veröffentlicht',
+    'Ответы в Telegram сохраняют форматирование (жирный, курсив, код, ссылки); опубликовано с npm provenance',
+    'As respostas no Telegram mantêm a formatação (negrito, itálico, código, links); publicado com proveniência npm',
+    'Telegram-antwoorden behouden hun opmaak (vet, cursief, code, links); gepubliceerd met npm-herkomst',
+    'Les réponses Telegram gardent leur mise en forme (gras, italique, code, liens) ; publié avec la provenance npm',
+    'Le risposte su Telegram mantengono la formattazione (grassetto, corsivo, codice, link); pubblicato con provenienza npm',
+    'Las respuestas en Telegram conservan el formato (negrita, cursiva, código, enlaces); publicado con procedencia npm',
+    'Odpowiedzi w Telegramie zachowują formatowanie (pogrubienie, kursywa, kod, linki); opublikowano z pochodzeniem npm',
+    'Відповіді в Telegram зберігають форматування (жирний, курсив, код, посилання); опубліковано з npm provenance',
+    'Telegram 回答保留格式（粗体、斜体、代码、链接）；带 npm 来源证明发布',
+];
+NEWS['0.0.1'] = [
     'Initial version: durable agent with search, read and allowlisted write tools; chat via Telegram',
     'Erste Version: dauerhafter Agent mit Such-, Lese- und Schreibwerkzeugen mit Freigabeliste; Chat über Telegram',
     'Первая версия: устойчивый агент с инструментами поиска, чтения и записи по списку разрешений; чат через Telegram',
@@ -410,7 +425,15 @@ const codeNames = Object.fromEntries(
 );
 fs.writeFileSync(path.join(root, 'lib', 'object-names.json'), `${JSON.stringify(codeNames, null, '\t')}\n`);
 pkg.common.desc = Object.fromEntries(LANGS.map((l, i) => [l, byLang(DESC, i)]));
-pkg.common.news = { [pkg.common.version]: Object.fromEntries(LANGS.map((l, i) => [l, byLang(NEWS, i)])) };
+if (!NEWS[pkg.common.version]) {
+    throw new Error(`No news for version ${pkg.common.version}`);
+}
+// Insertion order of NEWS is newest first; keep the seven newest.
+pkg.common.news = Object.fromEntries(
+    Object.entries(NEWS)
+        .slice(0, 7)
+        .map(([version, texts]) => [version, Object.fromEntries(LANGS.map((l, i) => [l, byLang(texts, i)]))]),
+);
 fs.writeFileSync(file, `${JSON.stringify(pkg, null, '\t')}\n`);
 JSON.parse(fs.readFileSync(file, 'utf8')); // validate what was written
 console.log('i18n written for', LANGS.length, 'languages');

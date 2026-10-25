@@ -1,8 +1,21 @@
 {
 	"common": {
 		"name": "pi-agent",
-		"version": "0.0.1",
+		"version": "0.0.2",
 		"news": {
+			"0.0.2": {
+				"en": "Telegram answers keep their formatting (bold, italic, code, links); released with npm provenance",
+				"de": "Telegram-Antworten behalten ihre Formatierung (fett, kursiv, Code, Links); mit npm-Provenance veröffentlicht",
+				"ru": "Ответы в Telegram сохраняют форматирование (жирный, курсив, код, ссылки); опубликовано с npm provenance",
+				"pt": "As respostas no Telegram mantêm a formatação (negrito, itálico, código, links); publicado com proveniência npm",
+				"nl": "Telegram-antwoorden behouden hun opmaak (vet, cursief, code, links); gepubliceerd met npm-herkomst",
+				"fr": "Les réponses Telegram gardent leur mise en forme (gras, italique, code, liens) ; publié avec la provenance npm",
+				"it": "Le risposte su Telegram mantengono la formattazione (grassetto, corsivo, codice, link); pubblicato con provenienza npm",
+				"es": "Las respuestas en Telegram conservan el formato (negrita, cursiva, código, enlaces); publicado con procedencia npm",
+				"pl": "Odpowiedzi w Telegramie zachowują formatowanie (pogrubienie, kursywa, kod, linki); opublikowano z pochodzeniem npm",
+				"uk": "Відповіді в Telegram зберігають форматування (жирний, курсив, код, посилання); опубліковано з npm provenance",
+				"zh-cn": "Telegram 回答保留格式（粗体、斜体、代码、链接）；带 npm 来源证明发布"
+			},
 			"0.0.1": {
 				"en": "Initial version: durable agent with search, read and allowlisted write tools; chat via Telegram",
 				"de": "Erste Version: dauerhafter Agent mit Such-, Lese- und Schreibwerkzeugen mit Freigabeliste; Chat über Telegram",

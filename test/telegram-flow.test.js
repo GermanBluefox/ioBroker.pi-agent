@@ -33,7 +33,7 @@ test('only allowed users with the prefix reach the agent; each chat has its own 
     const f = await faux();
     const seen = [];
     const answer = reply => context => {
-        seen.push(JSON.stringify(context.messages));
+        seen.push(JSON.stringify(context));
         return f.fauxAssistantMessage(reply);
     };
     const { agent, db } = await startAgent({
@@ -54,14 +54,15 @@ test('only allowed users with the prefix reach the agent; each chat has its own 
     await receive(agent, db, { chatId: 200, userId: 2, messageId: 4, name: 'Bob', text: '/ai I am Bob' });
 
     assert.deepEqual(sentToTelegram(agent), [
-        { text: 'Hello Alex', chatId: '100' },
-        { text: 'Hello Bob', chatId: '200' },
+        { text: 'Hello Alex', chatId: '100', parse_mode: 'HTML' },
+        { text: 'Hello Bob', chatId: '200', parse_mode: 'HTML' },
     ]);
     const chats = JSON.parse(db.states[`${NAMESPACE}.telegram.chats`].val);
     assert.deepEqual(Object.keys(chats).sort(), ['100', '200']);
     assert.notEqual(chats['100'], chats['200'], 'two chats, two conversations');
     assert.match(seen[1], /I am Bob/);
     assert.doesNotMatch(seen[1], /I am Alex/, "Bob's conversation does not see Alex's messages");
+    assert.match(seen[0], /This conversation is a Telegram chat/, 'chats get the Telegram instructions');
     assert.equal(db.states[`${NAMESPACE}.chat.answer`], undefined, 'Telegram answers do not go to chat.answer');
     await stopAgent(agent);
 });
@@ -74,7 +75,7 @@ test('the first name from the telegram user list is accepted, like in other adap
         responses: [f.fauxAssistantMessage('Hi Alex')],
     });
     await receive(agent, db, { chatId: 100, userId: 1, messageId: 11, name: 'Alex', text: '/ai hi' });
-    assert.deepEqual(sentToTelegram(agent), [{ text: 'Hi Alex', chatId: '100' }]);
+    assert.deepEqual(sentToTelegram(agent), [{ text: 'Hi Alex', chatId: '100', parse_mode: 'HTML' }]);
 
     // somebody unknown to telegram.0 who calls himself Alex is still refused
     await receive(agent, db, { chatId: 400, userId: 4, messageId: 12, name: 'Alex', text: '/ai open the door' });
@@ -139,12 +140,26 @@ test('a restart in the middle of a Telegram request answers in the same chat aft
         responses: [f.fauxAssistantMessage('The lamp is off.'), f.fauxAssistantMessage('The lamp is off.')],
     });
     await waitFor(() => second.db.states[`${NAMESPACE}.chat.pending`].val === '', 'the resumed request to finish');
-    assert.deepEqual(sentToTelegram(second.agent), [{ text: 'The lamp is off.', chatId: '100' }]);
+    assert.deepEqual(sentToTelegram(second.agent), [{ text: 'The lamp is off.', chatId: '100', parse_mode: 'HTML' }]);
     await stopAgent(second.agent);
 });
 
 test('Telegram is off when no instance is configured', async () => {
     const { agent } = await startAgent({ dataDir: tmp(), responses: [] });
     assert.equal(agent.foreignSubscriptions, undefined);
+    await stopAgent(agent);
+});
+
+test('Markdown in an answer is sent as Telegram HTML', async () => {
+    const f = await faux();
+    const { agent, db } = await startAgent({
+        dataDir: tmp(),
+        config: CONFIG,
+        responses: [f.fauxAssistantMessage('**Чтение** — всё, a<b')],
+    });
+    await receive(agent, db, { chatId: 100, userId: 1, messageId: 21, name: 'Alex', text: '/ai what can you do?' });
+    assert.deepEqual(sentToTelegram(agent), [
+        { text: '<b>Чтение</b> — всё, a&lt;b', chatId: '100', parse_mode: 'HTML' },
+    ]);
     await stopAgent(agent);
 });
