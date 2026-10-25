@@ -42,7 +42,8 @@
 		"test:js": "node --test test/unit.test.js test/harness.test.js test/providers.test.js test/deepseek.test.js",
 		"test:package": "mocha test/package.js --exit",
 		"test": "npm run test:js && npm run test:package",
-		"i18n": "node tools/build-i18n.js"
+		"i18n": "node tools/build-i18n.js",
+		"test:integration": "mocha test/integration.js --exit --config test/mocharc.custom.json"
 	},
 	"bugs": {
 		"url": "https://github.com/sadam6752-tech/ioBroker.pi-agent/issues"
