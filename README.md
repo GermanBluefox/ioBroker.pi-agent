@@ -30,10 +30,11 @@ before it runs, so an interrupted request continues after the adapter starts aga
 
 ## Requirements
 
-- Node.js 22.19.0 or newer, js-controller 6.0.11 or newer, admin 7.0.23 or newer.
+- Node.js 22.19.0 or newer, js-controller 6.0.11 or newer, admin 7.6.20 or newer.
 - An API key of the chosen provider: Anthropic, OpenAI or DeepSeek.
-- The adapter runs as its own process (not in compact mode): the provider reads the key from the process environment,
-  which must not leak into other adapters.
+- The adapter runs as its own process (not in compact mode). It keeps long-running model requests and a conversation
+  store open, and its dependencies are large; running it apart keeps a fault or a memory peak away from other adapters.
+  The API key is kept in memory of this instance only and is never put into the process environment.
 
 ## Configuration
 
@@ -79,11 +80,11 @@ Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Avai
 
 ## Changelog
 
-### **WORK IN PROGRESS**
+### 0.0.1 (2026-10-25)
 
-- Initial version
-- Providers: Anthropic, OpenAI, DeepSeek
-- Every tool call is logged; `get_state` accepts `*` patterns; new tool `list_instances`
+- Initial version: durable agent with the tools `search_objects`, `get_state`, `list_instances` and `set_state`
+- Write allowlist and dry run; an interrupted write is never repeated; requests continue after a restart
+- Providers: Anthropic, OpenAI, DeepSeek; every tool call is logged
 
 ## License
 

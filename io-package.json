@@ -17,7 +17,6 @@
 				"zh-cn": "初始版本：具有搜索、读取以及带白名单写入工具的持久代理"
 			}
 		},
-		"title": "Pi Agent",
 		"titleLang": {
 			"en": "Pi Agent",
 			"de": "Pi Agent",
@@ -83,7 +82,7 @@
 		],
 		"globalDependencies": [
 			{
-				"admin": ">=7.0.23"
+				"admin": ">=7.6.20"
 			}
 		]
 	},
@@ -107,7 +106,19 @@
 			"_id": "info",
 			"type": "channel",
 			"common": {
-				"name": "Information"
+				"name": {
+					"en": "Information",
+					"de": "Informationen",
+					"ru": "Информация",
+					"pt": "Informação",
+					"nl": "Informatie",
+					"fr": "Informations",
+					"it": "Informazioni",
+					"es": "Información",
+					"pl": "Informacje",
+					"uk": "Інформація",
+					"zh-cn": "信息"
+				}
 			},
 			"native": {}
 		},
@@ -115,7 +126,19 @@
 			"_id": "info.connection",
 			"type": "state",
 			"common": {
-				"name": "Agent is running",
+				"name": {
+					"en": "Agent is running",
+					"de": "Agent läuft",
+					"ru": "Агент работает",
+					"pt": "O agente está em execução",
+					"nl": "Agent is actief",
+					"fr": "L'agent est en cours d'exécution",
+					"it": "L'agente è in esecuzione",
+					"es": "El agente está en ejecución",
+					"pl": "Agent działa",
+					"uk": "Агент працює",
+					"zh-cn": "代理正在运行"
+				},
 				"type": "boolean",
 				"role": "indicator.connected",
 				"read": true,
@@ -128,7 +151,19 @@
 			"_id": "chat",
 			"type": "channel",
 			"common": {
-				"name": "Chat"
+				"name": {
+					"en": "Chat",
+					"de": "Unterhaltung",
+					"ru": "Чат",
+					"pt": "Conversa",
+					"nl": "Gesprek",
+					"fr": "Discussion",
+					"it": "Conversazione",
+					"es": "Conversación",
+					"pl": "Rozmowa",
+					"uk": "Чат з агентом",
+					"zh-cn": "聊天"
+				}
 			},
 			"native": {}
 		},
@@ -136,7 +171,19 @@
 			"_id": "chat.input",
 			"type": "state",
 			"common": {
-				"name": "Request to the agent",
+				"name": {
+					"en": "Request to the agent",
+					"de": "Anfrage an den Agenten",
+					"ru": "Запрос к агенту",
+					"pt": "Pedido ao agente",
+					"nl": "Verzoek aan de agent",
+					"fr": "Demande à l'agent",
+					"it": "Richiesta all'agente",
+					"es": "Solicitud al agente",
+					"pl": "Zapytanie do agenta",
+					"uk": "Запит до агента",
+					"zh-cn": "发给代理的请求"
+				},
 				"type": "string",
 				"role": "text",
 				"read": true,
@@ -149,7 +196,19 @@
 			"_id": "chat.answer",
 			"type": "state",
 			"common": {
-				"name": "Answer of the agent",
+				"name": {
+					"en": "Answer of the agent",
+					"de": "Antwort des Agenten",
+					"ru": "Ответ агента",
+					"pt": "Resposta do agente",
+					"nl": "Antwoord van de agent",
+					"fr": "Réponse de l'agent",
+					"it": "Risposta dell'agente",
+					"es": "Respuesta del agente",
+					"pl": "Odpowiedź agenta",
+					"uk": "Відповідь агента",
+					"zh-cn": "代理的回答"
+				},
 				"type": "string",
 				"role": "text",
 				"read": true,
@@ -162,7 +221,19 @@
 			"_id": "chat.pending",
 			"type": "state",
 			"common": {
-				"name": "Request in progress",
+				"name": {
+					"en": "Request in progress",
+					"de": "Anfrage in Bearbeitung",
+					"ru": "Запрос выполняется",
+					"pt": "Pedido em curso",
+					"nl": "Verzoek wordt verwerkt",
+					"fr": "Demande en cours",
+					"it": "Richiesta in corso",
+					"es": "Solicitud en curso",
+					"pl": "Zapytanie w toku",
+					"uk": "Запит виконується",
+					"zh-cn": "请求处理中"
+				},
 				"type": "string",
 				"role": "json",
 				"read": true,

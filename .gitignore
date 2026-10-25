@@ -1,4 +1,7 @@
 node_modules/
+.dev-server/
+iob_npm.done
 .commitinfo
 *.log
+npm-debug.log*
 .DS_Store

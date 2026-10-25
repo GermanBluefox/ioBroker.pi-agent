@@ -60,3 +60,22 @@ test('jsonConfig: only component types the admin knows', () => {
 		assert.ok(known.has(item.type), `${key} uses unknown type "${item.type}"`);
 	}
 });
+
+test('i18n: eleven languages for instance objects, same admin keys, nothing left in English', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const io = require('../io-package.json');
+    const langs = ['en', 'de', 'ru', 'pt', 'nl', 'fr', 'it', 'es', 'pl', 'uk', 'zh-cn'];
+    assert.equal('title' in io.common, false, 'common.title is deprecated');
+    for (const obj of io.instanceObjects) {
+        assert.deepEqual(Object.keys(obj.common.name).sort(), [...langs].sort(), obj._id);
+    }
+    const en = JSON.parse(fs.readFileSync(path.join(__dirname, '../admin/i18n/en.json'), 'utf8'));
+    for (const lang of langs.filter(l => l !== 'en')) {
+        const tr = JSON.parse(fs.readFileSync(path.join(__dirname, `../admin/i18n/${lang}.json`), 'utf8'));
+        assert.deepEqual(Object.keys(tr).sort(), Object.keys(en).sort(), `keys of ${lang}`);
+        for (const key of Object.keys(en)) {
+            assert.notEqual(tr[key], en[key], `${lang}: "${key}" is still English`);
+        }
+    }
+});
