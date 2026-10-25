@@ -49,6 +49,7 @@
 	],
 	"scripts": {
 		"test:js": "node --test test/unit.test.js test/harness.test.js test/providers.test.js test/deepseek.test.js test/main.test.js",
+		"test:unit": "npm run test:js",
 		"test:package": "mocha test/package.js --exit",
 		"test:integration": "mocha test/integration.js --exit --config test/mocharc.custom.json",
 		"test": "npm run test:js && npm run test:package",
