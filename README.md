@@ -1,0 +1,105 @@
+![Logo](admin/pi-agent.png)
+
+# ioBroker.pi-agent
+
+[![NPM version](https://img.shields.io/npm/v/iobroker.pi-agent.svg)](https://www.npmjs.com/package/iobroker.pi-agent)
+[![Downloads](https://img.shields.io/npm/dm/iobroker.pi-agent.svg)](https://www.npmjs.com/package/iobroker.pi-agent)
+[![License](https://img.shields.io/github/license/sadam6752-tech/ioBroker.pi-agent.svg)](LICENSE)
+
+[![NPM](https://nodei.co/npm/iobroker.pi-agent.png?downloads=true)](https://nodei.co/npm/iobroker.pi-agent/)
+
+![Test and Release](https://github.com/sadam6752-tech/ioBroker.pi-agent/workflows/Test%20and%20Release/badge.svg)
+
+A language model agent for ioBroker that survives restarts and crashes. It is built on
+[Pi Durable](https://earendil.com/posts/pi-durable/): every model call and tool call is stored as a checkpoint
+before it runs, so an interrupted request continues after the adapter starts again instead of starting over.
+
+## What it does
+
+- Reads and searches states through the tools `search_objects`, `get_state` (one id or a `*` pattern) and
+  `list_instances`. These tools may be repeated safely.
+- `list_instances` starts from the instance objects and reads `alive` and `connected` of each instance by its exact id.
+  A `*` pattern only finds states that have an object, so a stale `alive` value of an instance whose state object is
+  gone is missing from a pattern query but not from `list_instances`.
+- Logs every tool call as one line: `Tool <name> <arguments> -> <outcome>` (blocked writes as a warning).
+- Writes states through `set_state`. This tool is **never repeated** after an interruption: the model is told that the
+  call was interrupted and checks the actual value first. A light cannot be switched twice by a restart.
+- Writes only to states on the **write allowlist**. Everything else is blocked before it runs.
+- Answers each request exactly once. The request id is derived from the triggering state, so a repeated trigger finds the
+  original request.
+
+## Requirements
+
+- Node.js 22.19.0 or newer, js-controller 6.0.11 or newer, admin 7.0.23 or newer.
+- An API key of the chosen provider: Anthropic, OpenAI or DeepSeek.
+- The adapter runs as its own process (not in compact mode): the provider reads the key from the process environment,
+  which must not leak into other adapters.
+
+## Configuration
+
+| Setting         | Meaning                                                                          |
+| --------------- | -------------------------------------------------------------------------------- |
+| Provider, Model | The language model. Empty model: the default of the provider (`claude-sonnet-5-5`, `gpt-6-sol`, `deepseek-flash`). |
+| API key         | Stored encrypted.                                                                |
+| Dry run         | On by default. Write requests are logged and answered, but not executed.         |
+| Write allowlist | One regular expression per line. Empty means the agent cannot write anything.   |
+| Instructions    | Text appended to the system prompt, for example room names and house rules.     |
+
+Example allowlist:
+
+```
+^hm-rpc\.0\.Wohnzimmer\.
+^javascript\.0\.agent\.
+```
+
+Start with dry run on, watch the log, and only then switch it off.
+
+## Usage
+
+Write a text to `pi-agent.0.chat.input`. The answer appears in `pi-agent.0.chat.answer`. From a script:
+
+```js
+sendTo('pi-agent.0', 'ask', { text: 'Is the living room light on?' }, result => log(result.answer));
+```
+
+`pi-agent.0.chat.pending` holds the request that is currently running. If the adapter stops in the middle, the request
+continues on the next start.
+
+### DeepSeek
+
+Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Available models: `deepseek-flash`
+(default, fast) and `deepseek-v4-pro`. Requests go to `https://api.deepseek.com`.
+
+## Security
+
+- The model decides which tools to call. The allowlist and the dry run are your protection, not the prompt.
+- The text of your requests and the values the agent reads are sent to the provider. Do not give it access to states
+  that contain secrets.
+- The conversation is stored unencrypted in the instance data directory.
+
+## Changelog
+
+### **WORK IN PROGRESS**
+
+- Initial version
+- Providers: Anthropic, OpenAI, DeepSeek
+- Every tool call is logged; `get_state` accepts `*` patterns; new tool `list_instances`
+
+## License
+
+MIT License
+
+Copyright (c) 2026 Alex <sadam6752@gmail.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to
+whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

@@ -1,0 +1,12 @@
+{
+	"Provider": "Anbieter",
+	"Model": "Modell",
+	"API key": "API-Schlüssel",
+	"Dry run": "Probelauf",
+	"Log write requests instead of executing them": "Schreibanfragen nur protokollieren, nicht ausführen",
+	"Leave empty to use the default model of the provider": "Leer lassen, um das Standardmodell des Anbieters zu verwenden",
+	"Write allowlist": "Schreib-Freigabeliste",
+	"One regular expression per line. The agent may only write states whose ID matches one of them.": "Ein regulärer Ausdruck pro Zeile. Der Agent darf nur Datenpunkte schreiben, deren ID zu einem davon passt.",
+	"Instructions": "Anweisungen",
+	"Additional instructions for the agent": "Zusätzliche Anweisungen für den Agenten"
+}

@@ -1,0 +1,51 @@
+{
+	"name": "iobroker.pi-agent",
+	"version": "0.0.1",
+	"description": "Durable LLM agent for ioBroker: crash-safe tool calls, write allowlist, idempotent triggers.",
+	"author": {
+		"name": "Alex",
+		"email": "sadam6752@gmail.com"
+	},
+	"homepage": "https://github.com/sadam6752-tech/ioBroker.pi-agent",
+	"license": "MIT",
+	"keywords": [
+		"ioBroker",
+		"agent",
+		"llm",
+		"automation"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/sadam6752-tech/ioBroker.pi-agent.git"
+	},
+	"engines": {
+		"node": ">=22.19.0"
+	},
+	"dependencies": {
+		"@earendil-works/chord": "1.4.0",
+		"@earendil-works/pi-ai": "1.4.0",
+		"@earendil-works/pi-durable": "1.4.0",
+		"@iobroker/adapter-core": "^3.4.3"
+	},
+	"devDependencies": {
+		"@iobroker/testing": "^5.0.4"
+	},
+	"main": "main.js",
+	"files": [
+		"admin/",
+		"lib/",
+		"io-package.json",
+		"LICENSE",
+		"main.js"
+	],
+	"scripts": {
+		"test:js": "node --test test/unit.test.js test/harness.test.js test/providers.test.js test/deepseek.test.js",
+		"test:package": "mocha test/package.js --exit",
+		"test": "npm run test:js && npm run test:package",
+		"i18n": "node tools/build-i18n.js"
+	},
+	"bugs": {
+		"url": "https://github.com/sadam6752-tech/ioBroker.pi-agent/issues"
+	},
+	"readmeFilename": "README.md"
+}

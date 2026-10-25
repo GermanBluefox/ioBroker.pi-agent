@@ -1,0 +1,12 @@
+{
+	"Provider": "Провайдер",
+	"Model": "Модель",
+	"API key": "API-ключ",
+	"Dry run": "Пробный запуск",
+	"Log write requests instead of executing them": "Только записывать запросы на запись в журнал, не выполняя их",
+	"Leave empty to use the default model of the provider": "Оставьте пустым, чтобы использовать модель провайдера по умолчанию",
+	"Write allowlist": "Список разрешённых записей",
+	"One regular expression per line. The agent may only write states whose ID matches one of them.": "Одно регулярное выражение в строке. Агент может записывать только состояния, ID которых соответствует одному из них.",
+	"Instructions": "Инструкции",
+	"Additional instructions for the agent": "Дополнительные инструкции для агента"
+}

@@ -1,0 +1,175 @@
+{
+	"common": {
+		"name": "pi-agent",
+		"version": "0.0.1",
+		"news": {
+			"0.0.1": {
+				"en": "Initial version: durable agent with search, read and allowlisted write tools",
+				"de": "Erste Version: dauerhafter Agent mit Such-, Lese- und Schreibwerkzeugen mit Freigabeliste",
+				"ru": "Первая версия: устойчивый агент с инструментами поиска, чтения и записи по списку разрешений",
+				"pt": "Versão inicial: agente durável com ferramentas de pesquisa, leitura e escrita com lista de permissões",
+				"nl": "Eerste versie: duurzame agent met zoek-, lees- en schrijftools met toegestane lijst",
+				"fr": "Version initiale : agent durable avec outils de recherche, de lecture et d'écriture avec liste autorisée",
+				"it": "Versione iniziale: agente durevole con strumenti di ricerca, lettura e scrittura con elenco consentito",
+				"es": "Versión inicial: agente duradero con herramientas de búsqueda, lectura y escritura con lista permitida",
+				"pl": "Wersja początkowa: trwały agent z narzędziami wyszukiwania, odczytu i zapisu z listą dozwolonych",
+				"uk": "Перша версія: стійкий агент з інструментами пошуку, читання та запису зі списком дозволених",
+				"zh-cn": "初始版本：具有搜索、读取以及带白名单写入工具的持久代理"
+			}
+		},
+		"title": "Pi Agent",
+		"titleLang": {
+			"en": "Pi Agent",
+			"de": "Pi Agent",
+			"ru": "Pi Agent",
+			"pt": "Pi Agent",
+			"nl": "Pi Agent",
+			"fr": "Pi Agent",
+			"it": "Pi Agent",
+			"es": "Pi Agent",
+			"pl": "Pi Agent",
+			"uk": "Pi Agent",
+			"zh-cn": "Pi Agent"
+		},
+		"desc": {
+			"en": "Durable LLM agent that reads and controls ioBroker states and survives restarts and crashes",
+			"de": "Dauerhafter LLM-Agent, der ioBroker-Datenpunkte liest und steuert und Neustarts und Abstürze übersteht",
+			"ru": "Устойчивый LLM-агент, который читает и управляет состояниями ioBroker и переживает перезапуски и сбои",
+			"pt": "Agente LLM durável que lê e controla estados do ioBroker e sobrevive a reinícios e falhas",
+			"nl": "Duurzame LLM-agent die ioBroker-states leest en bestuurt en herstarts en crashes overleeft",
+			"fr": "Agent LLM durable qui lit et pilote les états d'ioBroker et survit aux redémarrages et aux plantages",
+			"it": "Agente LLM durevole che legge e controlla gli stati di ioBroker e sopravvive a riavvii e arresti anomali",
+			"es": "Agente LLM duradero que lee y controla estados de ioBroker y sobrevive a reinicios y fallos",
+			"pl": "Trwały agent LLM, który odczytuje i steruje stanami ioBroker oraz przetrwa restarty i awarie",
+			"uk": "Стійкий LLM-агент, який читає та керує станами ioBroker і переживає перезапуски та збої",
+			"zh-cn": "可持久运行的 LLM 代理，读取并控制 ioBroker 状态，可在重启和崩溃后恢复"
+		},
+		"authors": [
+			"Alex <sadam6752@gmail.com>"
+		],
+		"keywords": [
+			"agent",
+			"llm",
+			"ai",
+			"automation"
+		],
+		"licenseInformation": {
+			"license": "MIT",
+			"type": "free"
+		},
+		"platform": "Javascript/Node.js",
+		"icon": "pi-agent.png",
+		"enabled": true,
+		"extIcon": "https://raw.githubusercontent.com/sadam6752-tech/ioBroker.pi-agent/main/admin/pi-agent.png",
+		"readme": "https://github.com/sadam6752-tech/ioBroker.pi-agent/blob/main/README.md",
+		"loglevel": "info",
+		"tier": 3,
+		"mode": "daemon",
+		"type": "general",
+		"compact": false,
+		"connectionType": "cloud",
+		"dataSource": "push",
+		"messagebox": true,
+		"adminUI": {
+			"config": "json"
+		},
+		"supportedMessages": {
+			"custom": false
+		},
+		"dependencies": [
+			{
+				"js-controller": ">=6.0.11"
+			}
+		],
+		"globalDependencies": [
+			{
+				"admin": ">=7.0.23"
+			}
+		]
+	},
+	"encryptedNative": [
+		"apiKey"
+	],
+	"protectedNative": [
+		"apiKey"
+	],
+	"native": {
+		"provider": "anthropic",
+		"modelId": "",
+		"apiKey": "",
+		"writeAllow": "",
+		"instructions": "",
+		"dryRun": true
+	},
+	"objects": [],
+	"instanceObjects": [
+		{
+			"_id": "info",
+			"type": "channel",
+			"common": {
+				"name": "Information"
+			},
+			"native": {}
+		},
+		{
+			"_id": "info.connection",
+			"type": "state",
+			"common": {
+				"name": "Agent is running",
+				"type": "boolean",
+				"role": "indicator.connected",
+				"read": true,
+				"write": false,
+				"def": false
+			},
+			"native": {}
+		},
+		{
+			"_id": "chat",
+			"type": "channel",
+			"common": {
+				"name": "Chat"
+			},
+			"native": {}
+		},
+		{
+			"_id": "chat.input",
+			"type": "state",
+			"common": {
+				"name": "Request to the agent",
+				"type": "string",
+				"role": "text",
+				"read": true,
+				"write": true,
+				"def": ""
+			},
+			"native": {}
+		},
+		{
+			"_id": "chat.answer",
+			"type": "state",
+			"common": {
+				"name": "Answer of the agent",
+				"type": "string",
+				"role": "text",
+				"read": true,
+				"write": false,
+				"def": ""
+			},
+			"native": {}
+		},
+		{
+			"_id": "chat.pending",
+			"type": "state",
+			"common": {
+				"name": "Request in progress",
+				"type": "string",
+				"role": "json",
+				"read": true,
+				"write": false,
+				"def": ""
+			},
+			"native": {}
+		}
+	]
+}

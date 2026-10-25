@@ -1,0 +1,84 @@
+{
+	"i18n": true,
+	"type": "panel",
+	"items": {
+		"provider": {
+			"type": "select",
+			"label": "Provider",
+			"options": [
+				{
+					"label": "Anthropic",
+					"value": "anthropic"
+				},
+				{
+					"label": "OpenAI",
+					"value": "openai"
+				},
+				{
+					"label": "DeepSeek",
+					"value": "deepseek"
+				}
+			],
+			"xs": 12,
+			"sm": 6,
+			"md": 4,
+			"lg": 4,
+			"xl": 4
+		},
+		"modelId": {
+			"type": "text",
+			"label": "Model",
+			"xs": 12,
+			"sm": 6,
+			"md": 4,
+			"lg": 4,
+			"xl": 4,
+			"help": "Leave empty to use the default model of the provider"
+		},
+		"apiKey": {
+			"type": "password",
+			"label": "API key",
+			"repeat": false,
+			"xs": 12,
+			"sm": 12,
+			"md": 4,
+			"lg": 4,
+			"xl": 4
+		},
+		"dryRun": {
+			"type": "checkbox",
+			"label": "Dry run",
+			"help": "Log write requests instead of executing them",
+			"newLine": true,
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
+		},
+		"writeAllow": {
+			"type": "text",
+			"label": "Write allowlist",
+			"help": "One regular expression per line. The agent may only write states whose ID matches one of them.",
+			"minRows": 4,
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12,
+			"maxRows": 12
+		},
+		"instructions": {
+			"type": "text",
+			"label": "Instructions",
+			"help": "Additional instructions for the agent",
+			"minRows": 3,
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12,
+			"maxRows": 12
+		}
+	}
+}
