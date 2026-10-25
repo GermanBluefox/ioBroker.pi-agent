@@ -255,17 +255,17 @@ const DESC = [
     '可持久运行的 LLM 代理，读取并控制 ioBroker 状态，可在重启和崩溃后恢复',
 ];
 const NEWS = [
-    'Initial version: durable agent with search, read and allowlisted write tools',
-    'Erste Version: dauerhafter Agent mit Such-, Lese- und Schreibwerkzeugen mit Freigabeliste',
-    'Первая версия: устойчивый агент с инструментами поиска, чтения и записи по списку разрешений',
-    'Versão inicial: agente durável com ferramentas de pesquisa, leitura e escrita com lista de permissões',
-    'Eerste versie: duurzame agent met zoek-, lees- en schrijftools met toegestane lijst',
-    "Version initiale : agent durable avec outils de recherche, de lecture et d'écriture avec liste autorisée",
-    'Versione iniziale: agente durevole con strumenti di ricerca, lettura e scrittura con elenco consentito',
-    'Versión inicial: agente duradero con herramientas de búsqueda, lectura y escritura con lista permitida',
-    'Wersja początkowa: trwały agent z narzędziami wyszukiwania, odczytu i zapisu z listą dozwolonych',
-    'Перша версія: стійкий агент з інструментами пошуку, читання та запису зі списком дозволених',
-    '初始版本：具有搜索、读取以及带白名单写入工具的持久代理',
+    'Initial version: durable agent with search, read and allowlisted write tools; chat via Telegram',
+    'Erste Version: dauerhafter Agent mit Such-, Lese- und Schreibwerkzeugen mit Freigabeliste; Chat über Telegram',
+    'Первая версия: устойчивый агент с инструментами поиска, чтения и записи по списку разрешений; чат через Telegram',
+    'Versão inicial: agente durável com ferramentas de pesquisa, leitura e escrita com lista de permissões; conversa via Telegram',
+    'Eerste versie: duurzame agent met zoek-, lees- en schrijftools met toegestane lijst; chatten via Telegram',
+    "Version initiale : agent durable avec outils de recherche, de lecture et d'écriture avec liste autorisée; discussion via Telegram",
+    'Versione iniziale: agente durevole con strumenti di ricerca, lettura e scrittura con elenco consentito; chat tramite Telegram',
+    'Versión inicial: agente duradero con herramientas de búsqueda, lectura y escritura con lista permitida; chat a través de Telegram',
+    'Wersja początkowa: trwały agent z narzędziami wyszukiwania, odczytu i zapisu z listą dozwolonych; czat przez Telegram',
+    'Перша версія: стійкий агент з інструментами пошуку, читання та запису зі списком дозволених; чат через Telegram',
+    '初始版本：具有搜索、读取以及带白名单写入工具的持久代理；可通过 Telegram 聊天',
 ];
 
 /** Names of the instance objects: id -> [en, de, ru, pt, nl, fr, it, es, pl, uk, zh-cn] */

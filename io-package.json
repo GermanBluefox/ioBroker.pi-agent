@@ -4,17 +4,17 @@
 		"version": "0.0.1",
 		"news": {
 			"0.0.1": {
-				"en": "Initial version: durable agent with search, read and allowlisted write tools",
-				"de": "Erste Version: dauerhafter Agent mit Such-, Lese- und Schreibwerkzeugen mit Freigabeliste",
-				"ru": "Первая версия: устойчивый агент с инструментами поиска, чтения и записи по списку разрешений",
-				"pt": "Versão inicial: agente durável com ferramentas de pesquisa, leitura e escrita com lista de permissões",
-				"nl": "Eerste versie: duurzame agent met zoek-, lees- en schrijftools met toegestane lijst",
-				"fr": "Version initiale : agent durable avec outils de recherche, de lecture et d'écriture avec liste autorisée",
-				"it": "Versione iniziale: agente durevole con strumenti di ricerca, lettura e scrittura con elenco consentito",
-				"es": "Versión inicial: agente duradero con herramientas de búsqueda, lectura y escritura con lista permitida",
-				"pl": "Wersja początkowa: trwały agent z narzędziami wyszukiwania, odczytu i zapisu z listą dozwolonych",
-				"uk": "Перша версія: стійкий агент з інструментами пошуку, читання та запису зі списком дозволених",
-				"zh-cn": "初始版本：具有搜索、读取以及带白名单写入工具的持久代理"
+				"en": "Initial version: durable agent with search, read and allowlisted write tools; chat via Telegram",
+				"de": "Erste Version: dauerhafter Agent mit Such-, Lese- und Schreibwerkzeugen mit Freigabeliste; Chat über Telegram",
+				"ru": "Первая версия: устойчивый агент с инструментами поиска, чтения и записи по списку разрешений; чат через Telegram",
+				"pt": "Versão inicial: agente durável com ferramentas de pesquisa, leitura e escrita com lista de permissões; conversa via Telegram",
+				"nl": "Eerste versie: duurzame agent met zoek-, lees- en schrijftools met toegestane lijst; chatten via Telegram",
+				"fr": "Version initiale : agent durable avec outils de recherche, de lecture et d'écriture avec liste autorisée; discussion via Telegram",
+				"it": "Versione iniziale: agente durevole con strumenti di ricerca, lettura e scrittura con elenco consentito; chat tramite Telegram",
+				"es": "Versión inicial: agente duradero con herramientas de búsqueda, lectura y escritura con lista permitida; chat a través de Telegram",
+				"pl": "Wersja początkowa: trwały agent z narzędziami wyszukiwania, odczytu i zapisu z listą dozwolonych; czat przez Telegram",
+				"uk": "Перша версія: стійкий агент з інструментами пошуку, читання та запису зі списком дозволених; чат через Telegram",
+				"zh-cn": "初始版本：具有搜索、读取以及带白名单写入工具的持久代理；可通过 Telegram 聊天"
 			}
 		},
 		"titleLang": {
