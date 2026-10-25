@@ -6,6 +6,20 @@ const { parseAllowlist, requestIdFor } = require('./lib/guard');
 const { createIoBrokerExtension } = require('./lib/tools');
 const { createModelsWithKey } = require('./lib/providers');
 
+/**
+ * Text blocks of the model messages of one transcript entry.
+ *
+ * @param {ReadonlyArray<{ content?: string | ReadonlyArray<{ type: string, text?: string }> }>} messages model messages
+ * @returns {string} the text blocks joined by newlines, empty when there are none
+ */
+function answerText(messages) {
+    return messages
+        .flatMap(m => (Array.isArray(m.content) ? m.content : []))
+        .filter(p => p.type === 'text')
+        .map(p => p.text)
+        .join('\n');
+}
+
 class PiAgent extends utils.Adapter {
     /** @param {Partial<utils.AdapterOptions>} [options] adapter options */
     constructor(options = {}) {
@@ -133,10 +147,9 @@ class PiAgent extends utils.Adapter {
                 if (entries[i].kind !== 'pi.assistant') {
                     continue;
                 }
-                const parts = (entries[i].model || []).flatMap(m => (Array.isArray(m.content) ? m.content : []));
-                const textParts = parts.filter(p => p.type === 'text').map(p => p.text);
-                if (textParts.length) {
-                    return textParts.join('\n');
+                const answer = answerText(entries[i].model || []);
+                if (answer) {
+                    return answer;
                 }
             }
             return '';

@@ -63,8 +63,13 @@ Write a text to `pi-agent.0.chat.input`. The answer appears in `pi-agent.0.chat.
 sendTo('pi-agent.0', 'ask', { text: 'Is the living room light on?' }, result => log(result.answer));
 ```
 
+The answer of a `sendTo` request comes back only through the callback (`result.answer`, or `result.error`); it is not
+written to `chat.answer`.
+
 `pi-agent.0.chat.pending` holds the request that is currently running. If the adapter stops in the middle, the request
-continues on the next start.
+continues on the next start, and its answer is then written to `chat.answer` - also for a request that came in by
+`sendTo`, because its caller is no longer waiting. A caller that was interrupted gets
+`{ error: "Interrupted by shutdown; the request continues after the next start" }`.
 
 ### DeepSeek
 
