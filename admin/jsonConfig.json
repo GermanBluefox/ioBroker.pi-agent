@@ -79,6 +79,55 @@
 			"lg": 12,
 			"xl": 12,
 			"maxRows": 12
+		},
+		"telegramHeader": {
+			"type": "header",
+			"text": "Telegram",
+			"size": 3,
+			"newLine": true,
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
+		},
+		"telegramInstance": {
+			"type": "instance",
+			"adapter": "telegram",
+			"allowDeactivate": true,
+			"label": "Telegram instance",
+			"help": "Empty: the agent does not use Telegram",
+			"newLine": true,
+			"xs": 12,
+			"sm": 6,
+			"md": 4,
+			"lg": 4,
+			"xl": 4
+		},
+		"telegramPrefix": {
+			"type": "text",
+			"label": "Prefix",
+			"help": "Only messages that start with this text go to the agent, e.g. /ai. Empty: every message of an allowed user",
+			"hidden": "!data.telegramInstance",
+			"xs": 12,
+			"sm": 6,
+			"md": 4,
+			"lg": 4,
+			"xl": 4
+		},
+		"telegramUsers": {
+			"type": "text",
+			"label": "Allowed Telegram users",
+			"help": "Telegram user ID, user name or first name (as in the telegram adapter), one per line. Messages from anyone else are ignored.",
+			"minRows": 3,
+			"maxRows": 10,
+			"hidden": "!data.telegramInstance",
+			"newLine": true,
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
 		}
 	}
 }

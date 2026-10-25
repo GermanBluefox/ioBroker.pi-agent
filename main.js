@@ -5,6 +5,15 @@ const crypto = require('node:crypto');
 const { parseAllowlist, requestIdFor } = require('./lib/guard');
 const { createIoBrokerExtension } = require('./lib/tools');
 const { createModelsWithKey } = require('./lib/providers');
+const { ensureObjects } = require('./lib/objects');
+const {
+    parseAllowedUsers,
+    isAllowedUser,
+    parseRequest,
+    stripPrefix,
+    telegramRequestId,
+    splitMessage,
+} = require('./lib/telegram');
 
 /**
  * Text blocks of the model messages of one transcript entry.
@@ -20,6 +29,23 @@ function answerText(messages) {
         .join('\n');
 }
 
+/**
+ * Pending requests as stored in chat.pending: a list, or the single object of version 0.0.1.
+ *
+ * @param {unknown} value state value
+ * @returns {Array<{ requestId: string, content: string, target: { kind: string, chatId?: string } }>} entries
+ */
+function parsePending(value) {
+    if (!value) {
+        return [];
+    }
+    const parsed = JSON.parse(String(value));
+    const list = Array.isArray(parsed) ? parsed : [parsed];
+    return list
+        .filter(e => e && e.requestId && e.content)
+        .map(e => ({ requestId: e.requestId, content: e.content, target: e.target || { kind: 'state' } }));
+}
+
 class PiAgent extends utils.Adapter {
     /** @param {Partial<utils.AdapterOptions>} [options] adapter options */
     constructor(options = {}) {
@@ -32,10 +58,19 @@ class PiAgent extends utils.Adapter {
         this.harness = null;
         this.root = null;
         this.context = null;
+        this.model = null;
         this.allowlist = [];
+        /** Telegram instance ("telegram.0") or "" when the Telegram link is off. */
+        this.telegram = '';
+        this.allowedUsers = new Set();
+        /** Telegram chat id -> conversation id, persisted in telegram.chats. */
+        this.chats = {};
+        /** Requests that were accepted but not answered yet, persisted in chat.pending. */
+        this.pending = [];
+        this.pendingWrite = Promise.resolve();
         /** Set in onUnload: errors from the closing harness are interruptions, not failures. */
         this.stopping = false;
-        /** Runs are serialised: one conversation, one run at a time. */
+        /** Runs are serialised: one run at a time over all conversations. */
         this.queue = Promise.resolve();
         this.readyPromise = new Promise(resolve => {
             this.markReady = resolve;
@@ -45,6 +80,8 @@ class PiAgent extends utils.Adapter {
     async onReady() {
         try {
             await this.setStateAsync('info.connection', { val: false, ack: true });
+            // Created here, not in instanceObjects: js-controller would reset their ACL at every start.
+            await ensureObjects(this);
             this.allowlist = parseAllowlist(this.config.writeAllow, (line, msg) =>
                 this.log.warn(`Ignoring invalid allowlist line "${line}": ${msg}`),
             );
@@ -66,10 +103,11 @@ class PiAgent extends utils.Adapter {
 
             await this.startHarness();
             await this.subscribeStatesAsync('chat.input');
+            await this.startTelegram();
             await this.setStateAsync('info.connection', { val: true, ack: true });
             this.markReady();
 
-            // A request that was cut off by a crash is picked up again with the same requestId.
+            // Requests that were cut off by a restart or a crash are picked up again with the same requestId.
             await this.resumePending();
         } catch (e) {
             this.log.error(`Start failed: ${e.message}`);
@@ -104,11 +142,77 @@ class PiAgent extends utils.Adapter {
         const storage = await jsonl.openNodeJsonlStorage(`${dir}/session`, this.context);
         this.harness = await durable.Harness.open(storage, { models, registry }, this.context);
 
-        const model = { provider: this.config.provider, modelId };
-        this.root = await this.harness.root(this.context, { agent: { model } });
-        await this.root.configure({ model }, this.context); // the model may have changed since the first start
+        this.model = { provider: this.config.provider, modelId };
+        this.root = await this.harness.root(this.context, { agent: { model: this.model } });
+        await this.root.configure({ model: this.model }, this.context); // the model may have changed since the last start
         this.harness.resume();
-        this.log.info(`Agent ready (${model.provider}/${model.modelId})`);
+        this.log.info(`Agent ready (${this.model.provider}/${this.model.modelId})`);
+    }
+
+    /** Listen to the configured Telegram instance, if any. */
+    async startTelegram() {
+        this.telegram = String(this.config.telegramInstance || '').trim();
+        if (!this.telegram) {
+            return;
+        }
+        this.allowedUsers = parseAllowedUsers(this.config.telegramUsers);
+        if (this.allowedUsers.size === 0) {
+            this.log.warn('Telegram is on, but no user is allowed: every Telegram message is ignored.');
+        }
+        const stored = await this.getStateAsync('telegram.chats');
+        this.chats = stored?.val ? JSON.parse(String(stored.val)) : {};
+        // Chats keep their own conversation; a model change in the settings reaches them too.
+        for (const id of Object.values(this.chats)) {
+            const conversation = await this.harness.conversation(id, this.context);
+            await conversation?.configure({ model: this.model }, this.context);
+        }
+        await this.subscribeForeignStatesAsync(`${this.telegram}.communicate.request`);
+        const prefix = String(this.config.telegramPrefix || '').trim();
+        this.log.info(
+            `Telegram: listening on ${this.telegram} for ${this.allowedUsers.size} allowed user(s)${prefix ? `, prefix "${prefix}"` : ''}`,
+        );
+    }
+
+    /**
+     * Conversation of a request: one per Telegram chat, the root conversation for everything else.
+     *
+     * @param {{ kind: string, chatId?: string }} target where the answer goes
+     * @returns {Promise<object>} conversation handle
+     */
+    async conversationFor(target) {
+        if (target.kind !== 'telegram') {
+            return this.root;
+        }
+        const known = this.chats[target.chatId];
+        if (known) {
+            const conversation = await this.harness.conversation(known, this.context);
+            if (conversation) {
+                return conversation;
+            }
+        }
+        const created = await this.harness.createConversation(
+            { ownership: { kind: 'ownerless' }, agent: { model: this.model } },
+            this.context,
+        );
+        this.chats[target.chatId] = created.id;
+        await this.setStateAsync('telegram.chats', { val: JSON.stringify(this.chats), ack: true });
+        this.log.info(`Telegram: new conversation for chat ${target.chatId}`);
+        return created;
+    }
+
+    /** Write the pending list; writes are chained so the newest list always wins. */
+    savePending() {
+        this.pendingWrite = this.pendingWrite
+            .then(async () => {
+                await this.setStateAsync('chat.pending', {
+                    val: this.pending.length ? JSON.stringify(this.pending) : '',
+                    ack: true,
+                });
+            })
+            .catch(e => {
+                this.log.warn(`Pending requests could not be saved: ${e.message}`);
+            });
+        return this.pendingWrite;
     }
 
     /**
@@ -116,31 +220,56 @@ class PiAgent extends utils.Adapter {
      *
      * @param {string} content user text
      * @param {string} requestId stable id, so a retry finds the original submission
+     * @param {{ kind: string, chatId?: string }} [target] where the answer goes (kept for a restart)
      * @returns {Promise<string>} answer text
      */
-    ask(content, requestId) {
-        const run = this.queue.then(async () => {
+    ask(content, requestId, target = { kind: 'state' }) {
+        // Recorded before the request waits in the queue, so a queued request also survives a restart.
+        const admitted = (async () => {
             await this.readyPromise;
             if (!this.root) {
                 throw new Error('Agent is not running');
             }
-            await this.setStateAsync('chat.pending', { val: JSON.stringify({ requestId, content }), ack: true });
-            const submission = await this.root.submit({ type: 'input', content, requestId }, this.context);
-            const settled = await submission.wait(this.context);
-            if (settled.status !== 'done') {
-                throw new Error(`Request not answered (${settled.reason ?? settled.status})`);
+            this.pending = this.pending.filter(p => p.requestId !== requestId).concat({ requestId, content, target });
+            await this.savePending();
+        })();
+        const run = Promise.all([admitted, this.queue]).then(async () => {
+            try {
+                const conversation = await this.conversationFor(target);
+                const submission = await conversation.submit({ type: 'input', content, requestId }, this.context);
+                const settled = await submission.wait(this.context);
+                if (settled.status !== 'done') {
+                    throw new Error(`Request not answered (${settled.reason ?? settled.status})`);
+                }
+                const answer = await this.lastAnswer(conversation);
+                await this.removePending(requestId);
+                return answer;
+            } catch (e) {
+                if (!this.stopping) {
+                    await this.removePending(requestId);
+                }
+                throw e;
             }
-            const answer = await this.lastAnswer();
-            await this.setStateAsync('chat.pending', { val: '', ack: true });
-            return answer;
         });
         this.queue = run.catch(() => undefined);
+        admitted.catch(() => undefined);
         return run;
     }
 
-    /** @returns {Promise<string>} text of the newest assistant message */
-    async lastAnswer() {
-        const view = await this.root.viewState(this.context);
+    /** @param {string} requestId request to drop from the pending list */
+    async removePending(requestId) {
+        this.pending = this.pending.filter(p => p.requestId !== requestId);
+        await this.savePending();
+    }
+
+    /**
+     * Text of the newest assistant message of a conversation.
+     *
+     * @param {object} conversation conversation handle
+     * @returns {Promise<string>} answer text
+     */
+    async lastAnswer(conversation) {
+        const view = await conversation.viewState(this.context);
         try {
             const entries = view.value.entries;
             for (let i = entries.length - 1; i >= 0; i--) {
@@ -158,24 +287,59 @@ class PiAgent extends utils.Adapter {
         }
     }
 
-    async resumePending() {
-        const pending = await this.getStateAsync('chat.pending');
-        if (!pending || !pending.val) {
-            return;
-        }
+    /**
+     * Run a request and deliver the answer (or the error) to its target.
+     *
+     * @param {{ requestId: string, content: string, target: { kind: string, chatId?: string } }} entry request
+     */
+    async process(entry) {
         try {
-            const { requestId, content } = JSON.parse(String(pending.val));
-            this.log.info(`Continuing request ${requestId} after restart`);
-            const answer = await this.ask(content, requestId);
-            await this.setStateAsync('chat.answer', { val: answer, ack: true });
+            const answer = await this.ask(entry.content, entry.requestId, entry.target);
+            await this.deliver(entry.target, answer);
         } catch (e) {
             if (this.stopping) {
+                // The request stays pending, so the next start continues it.
                 this.log.info('Request interrupted by shutdown; it continues after the next start');
                 return;
             }
-            this.log.warn(`Pending request could not be continued: ${e.message}`);
-            await this.setStateAsync('chat.pending', { val: '', ack: true });
+            this.log.error(`Request failed: ${e.message}`);
+            await this.deliver(entry.target, `Error: ${e.message}`);
         }
+    }
+
+    /**
+     * @param {{ kind: string, chatId?: string }} target where the answer goes
+     * @param {string} text answer or error text
+     */
+    async deliver(target, text) {
+        if (target.kind === 'telegram') {
+            for (const part of splitMessage(text)) {
+                this.sendTo(this.telegram, 'send', { text: part, chatId: target.chatId });
+            }
+            return;
+        }
+        // "state", and "sendTo" after a restart: the caller is no longer waiting.
+        await this.setStateAsync('chat.answer', { val: text, ack: true });
+    }
+
+    async resumePending() {
+        const stored = await this.getStateAsync('chat.pending');
+        let entries;
+        try {
+            entries = parsePending(stored?.val);
+        } catch (e) {
+            this.log.warn(`Pending requests could not be read and are dropped: ${e.message}`);
+            await this.setStateAsync('chat.pending', { val: '', ack: true });
+            return;
+        }
+        this.pending = entries;
+        for (const entry of entries) {
+            if (entry.target.kind === 'telegram' && !this.telegram) {
+                entry.target = { kind: 'state' }; // Telegram was switched off meanwhile
+            }
+            this.log.info(`Continuing request ${entry.requestId} after restart`);
+        }
+        await Promise.all(entries.map(entry => this.process(entry)));
     }
 
     /**
@@ -183,22 +347,65 @@ class PiAgent extends utils.Adapter {
      * @param {ioBroker.State | null | undefined} state new state
      */
     async onStateChange(id, state) {
+        if (this.telegram && id === `${this.telegram}.communicate.request`) {
+            return this.onTelegram(state);
+        }
         if (!state || state.ack || id !== `${this.namespace}.chat.input` || !state.val) {
             return;
         }
-        try {
-            const answer = await this.ask(String(state.val), requestIdFor(crypto, state.ts, state.val));
-            await this.setStateAsync('chat.answer', { val: answer, ack: true });
-        } catch (e) {
-            if (this.stopping) {
-                // chat.pending stays set, so the next start continues this request.
-                this.log.info('Request interrupted by shutdown; it continues after the next start');
-                return;
-            }
-            this.log.error(`Request failed: ${e.message}`);
-            await this.setStateAsync('chat.answer', { val: `Error: ${e.message}`, ack: true });
+        const requestId = requestIdFor(crypto, state.ts, state.val);
+        await this.process({ requestId, content: String(state.val), target: { kind: 'state' } });
+        if (!this.stopping) {
+            await this.setStateAsync('chat.input', { val: String(state.val), ack: true });
         }
-        await this.setStateAsync('chat.input', { val: String(state.val), ack: true });
+    }
+
+    /**
+     * A message arrived at the Telegram instance: check sender and prefix, then ask in the chat's conversation.
+     *
+     * @param {ioBroker.State | null | undefined} state value of <telegram>.communicate.request ("[name]text")
+     */
+    async onTelegram(state) {
+        if (!state || !state.val) {
+            return;
+        }
+        const base = `${this.telegram}.communicate`;
+        const meta = await this.getForeignStatesAsync([
+            `${base}.requestChatId`,
+            `${base}.requestUserId`,
+            `${base}.requestMessageId`,
+            `${base}.users`,
+        ]);
+        const chatId = meta[`${base}.requestChatId`]?.val;
+        const userId = meta[`${base}.requestUserId`]?.val;
+        const messageId = meta[`${base}.requestMessageId`]?.val;
+        const { name, text } = parseRequest(state.val);
+        if (chatId === null || chatId === undefined || chatId === '') {
+            this.log.warn(`Telegram message without chat id ignored`);
+            return;
+        }
+        let users = {};
+        try {
+            users = JSON.parse(String(meta[`${base}.users`]?.val || '{}'));
+        } catch {
+            // the user list is only used to resolve user names
+        }
+        const known = users[String(userId)];
+        const sender = { userId, userName: known?.userName, firstName: known?.firstName, known: Boolean(known) };
+        if (!isAllowedUser(sender, this.allowedUsers)) {
+            const who = [known?.firstName, known?.userName].filter(Boolean).join(' / ') || name || '?';
+            this.log.warn(`Telegram message from ${who} (${userId ?? '?'}) ignored: user not allowed`);
+            return;
+        }
+        const content = stripPrefix(text, String(this.config.telegramPrefix || ''));
+        if (content === null) {
+            return; // not for the agent; the bot may serve other scripts too
+        }
+        const requestId =
+            messageId !== null && messageId !== undefined
+                ? telegramRequestId(chatId, messageId)
+                : requestIdFor(crypto, state.ts, state.val);
+        await this.process({ requestId, content, target: { kind: 'telegram', chatId: String(chatId) } });
     }
 
     /** @param {ioBroker.Message} obj message from a script or another adapter */
@@ -213,7 +420,7 @@ class PiAgent extends utils.Adapter {
                 throw new Error('Missing "text"');
             }
             const requestId = message.requestId || requestIdFor(crypto, Date.now(), message.text);
-            result = { answer: await this.ask(String(message.text), String(requestId)) };
+            result = { answer: await this.ask(String(message.text), String(requestId), { kind: 'sendTo' }) };
         } catch (e) {
             result = {
                 error: this.stopping
@@ -236,6 +443,7 @@ class PiAgent extends utils.Adapter {
                 this.log.error(`Closing the harness failed: ${e.message}`);
             }
             try {
+                await this.pendingWrite;
                 await this.setStateAsync('info.connection', { val: false, ack: true });
             } finally {
                 callback();

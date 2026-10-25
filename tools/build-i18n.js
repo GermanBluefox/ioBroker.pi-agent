@@ -144,6 +144,102 @@ const ADMIN = {
     ],
 };
 
+Object.assign(ADMIN, {
+    // a brand name, the same in every language (allowed in the "still English" test)
+    Telegram: [
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+    ],
+    'Telegram instance': [
+        'Telegram instance',
+        'Telegram-Instanz',
+        'Инстанс Telegram',
+        'Instância do Telegram',
+        'Telegram-instantie',
+        'Instance Telegram',
+        'Istanza Telegram',
+        'Instancia de Telegram',
+        'Instancja Telegram',
+        'Інстанс Telegram',
+        'Telegram 实例',
+    ],
+    'Empty: the agent does not use Telegram': [
+        'Empty: the agent does not use Telegram',
+        'Leer: Der Agent nutzt Telegram nicht',
+        'Пусто: агент не использует Telegram',
+        'Vazio: o agente não usa o Telegram',
+        'Leeg: de agent gebruikt Telegram niet',
+        "Vide : l'agent n'utilise pas Telegram",
+        "Vuoto: l'agente non usa Telegram",
+        'Vacío: el agente no usa Telegram',
+        'Puste: agent nie korzysta z Telegrama',
+        'Порожньо: агент не використовує Telegram',
+        '留空：代理不使用 Telegram',
+    ],
+    Prefix: [
+        'Prefix',
+        'Präfix',
+        'Префикс',
+        'Prefixo',
+        'Voorvoegsel',
+        'Préfixe',
+        'Prefisso',
+        'Prefijo',
+        'Prefiks',
+        'Префікс',
+        '前缀',
+    ],
+    'Only messages that start with this text go to the agent, e.g. /ai. Empty: every message of an allowed user': [
+        'Only messages that start with this text go to the agent, e.g. /ai. Empty: every message of an allowed user',
+        'Nur Nachrichten, die mit diesem Text beginnen, gehen an den Agenten, z. B. /ai. Leer: jede Nachricht eines erlaubten Nutzers',
+        'Агенту передаются только сообщения, начинающиеся с этого текста, например /ai. Пусто: все сообщения разрешённого пользователя',
+        'Apenas mensagens que começam com este texto vão para o agente, p. ex. /ai. Vazio: todas as mensagens de um utilizador permitido',
+        'Alleen berichten die met deze tekst beginnen gaan naar de agent, bijv. /ai. Leeg: elk bericht van een toegestane gebruiker',
+        "Seuls les messages commençant par ce texte vont à l'agent, p. ex. /ai. Vide : tous les messages d'un utilisateur autorisé",
+        "Solo i messaggi che iniziano con questo testo vanno all'agente, ad es. /ai. Vuoto: ogni messaggio di un utente consentito",
+        'Solo los mensajes que empiezan con este texto van al agente, p. ej. /ai. Vacío: todos los mensajes de un usuario permitido',
+        'Do agenta trafiają tylko wiadomości zaczynające się od tego tekstu, np. /ai. Puste: każda wiadomość dozwolonego użytkownika',
+        'Агенту передаються лише повідомлення, що починаються з цього тексту, напр. /ai. Порожньо: усі повідомлення дозволеного користувача',
+        '只有以此文本开头的消息才会发给代理，例如 /ai。留空：允许用户的所有消息',
+    ],
+    'Allowed Telegram users': [
+        'Allowed Telegram users',
+        'Erlaubte Telegram-Nutzer',
+        'Разрешённые пользователи Telegram',
+        'Utilizadores do Telegram permitidos',
+        'Toegestane Telegram-gebruikers',
+        'Utilisateurs Telegram autorisés',
+        'Utenti Telegram consentiti',
+        'Usuarios de Telegram permitidos',
+        'Dozwoleni użytkownicy Telegrama',
+        'Дозволені користувачі Telegram',
+        '允许的 Telegram 用户',
+    ],
+    'Telegram user ID, user name or first name (as in the telegram adapter), one per line. Messages from anyone else are ignored.':
+        [
+            'Telegram user ID, user name or first name (as in the telegram adapter), one per line. Messages from anyone else are ignored.',
+            'Telegram-Nutzer-ID, Benutzername oder Vorname (wie im Telegram-Adapter), einer pro Zeile. Nachrichten von allen anderen werden ignoriert.',
+            'ID, имя пользователя или имя Telegram (как в адаптере telegram), по одному в строке. Сообщения всех остальных игнорируются.',
+            'ID, nome de utilizador ou primeiro nome do Telegram (como no adaptador telegram), um por linha. As mensagens de qualquer outra pessoa são ignoradas.',
+            'Telegram-gebruikers-ID, gebruikersnaam of voornaam (zoals in de telegram-adapter), één per regel. Berichten van anderen worden genegeerd.',
+            "ID, nom d'utilisateur ou prénom Telegram (comme dans l'adaptateur telegram), un par ligne. Les messages de toute autre personne sont ignorés.",
+            "ID, nome utente o nome Telegram (come nell'adattatore telegram), uno per riga. I messaggi di chiunque altro vengono ignorati.",
+            'ID, nombre de usuario o nombre de pila de Telegram (como en el adaptador telegram), uno por línea. Los mensajes de cualquier otra persona se ignoran.',
+            'ID, nazwa użytkownika lub imię w Telegramie (jak w adapterze telegram), jedno w wierszu. Wiadomości od innych osób są ignorowane.',
+            'ID, імʼя користувача або імʼя в Telegram (як в адаптері telegram), по одному в рядку. Повідомлення всіх інших ігноруються.',
+            'Telegram 用户 ID、用户名或名字（与 telegram 适配器中相同），每行一个。其他人的消息将被忽略。',
+        ],
+});
+
 const TITLE = 'Pi Agent';
 const DESC = [
     'Durable LLM agent that reads and controls ioBroker states and survives restarts and crashes',
@@ -174,6 +270,32 @@ const NEWS = [
 
 /** Names of the instance objects: id -> [en, de, ru, pt, nl, fr, it, es, pl, uk, zh-cn] */
 const OBJECT_NAMES = {
+    telegram: [
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+        'Telegram',
+    ],
+    'telegram.chats': [
+        'Conversation per Telegram chat',
+        'Unterhaltung je Telegram-Chat',
+        'Беседа для каждого чата Telegram',
+        'Conversa por chat do Telegram',
+        'Gesprek per Telegram-chat',
+        'Conversation par discussion Telegram',
+        'Conversazione per chat Telegram',
+        'Conversación por chat de Telegram',
+        'Rozmowa dla każdego czatu Telegram',
+        'Розмова для кожного чату Telegram',
+        '每个 Telegram 聊天的对话',
+    ],
     info: [
         'Information',
         'Informationen',
@@ -269,13 +391,24 @@ const file = path.join(root, 'io-package.json');
 const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
 delete pkg.common.title; // deprecated, titleLang replaces it
 pkg.common.titleLang = Object.fromEntries(LANGS.map(l => [l, TITLE]));
-for (const obj of pkg.instanceObjects) {
-    const names = OBJECT_NAMES[obj._id];
+const translated = id => {
+    const names = OBJECT_NAMES[id];
     if (!names) {
-        throw new Error(`No translated name for instance object ${obj._id}`);
+        throw new Error(`No translated name for object ${id}`);
     }
-    obj.common.name = Object.fromEntries(LANGS.map((l, i) => [l, byLang(names, i)]));
+    return Object.fromEntries(LANGS.map((l, i) => [l, byLang(names, i)]));
+};
+for (const obj of pkg.instanceObjects) {
+    obj.common.name = translated(obj._id);
 }
+// Names of the objects the adapter creates itself (lib/objects.js): everything not in instanceObjects.
+const declared = new Set(pkg.instanceObjects.map(o => o._id));
+const codeNames = Object.fromEntries(
+    Object.keys(OBJECT_NAMES)
+        .filter(id => !declared.has(id))
+        .map(id => [id, translated(id)]),
+);
+fs.writeFileSync(path.join(root, 'lib', 'object-names.json'), `${JSON.stringify(codeNames, null, '\t')}\n`);
 pkg.common.desc = Object.fromEntries(LANGS.map((l, i) => [l, byLang(DESC, i)]));
 pkg.common.news = { [pkg.common.version]: Object.fromEntries(LANGS.map((l, i) => [l, byLang(NEWS, i)])) };
 fs.writeFileSync(file, `${JSON.stringify(pkg, null, '\t')}\n`);

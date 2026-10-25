@@ -55,11 +55,14 @@ test('io-package: the API key is declared encrypted and protected at the top lev
 
 test('jsonConfig: only component types the admin knows', () => {
 	const config = require('../admin/jsonConfig.json');
-	const known = new Set(['text', 'password', 'number', 'checkbox', 'select']);
+	const known = new Set(['text', 'password', 'number', 'checkbox', 'select', 'instance', 'header']);
 	for (const [key, item] of Object.entries(config.items)) {
 		assert.ok(known.has(item.type), `${key} uses unknown type "${item.type}"`);
 	}
 });
+
+/** Brand names that read the same in every language. */
+const SAME_IN_ALL_LANGUAGES = new Set(['Telegram']);
 
 test('i18n: eleven languages for instance objects, same admin keys, nothing left in English', () => {
     const fs = require('node:fs');
@@ -75,7 +78,35 @@ test('i18n: eleven languages for instance objects, same admin keys, nothing left
         const tr = JSON.parse(fs.readFileSync(path.join(__dirname, `../admin/i18n/${lang}.json`), 'utf8'));
         assert.deepEqual(Object.keys(tr).sort(), Object.keys(en).sort(), `keys of ${lang}`);
         for (const key of Object.keys(en)) {
-            assert.notEqual(tr[key], en[key], `${lang}: "${key}" is still English`);
+            if (!SAME_IN_ALL_LANGUAGES.has(key)) {
+                assert.notEqual(tr[key], en[key], `${lang}: "${key}" is still English`);
+            }
         }
+    }
+});
+
+test('jsonConfig: every label, help and header text has a translation key', () => {
+    const config = require('../admin/jsonConfig.json');
+    const en = require('../admin/i18n/en.json');
+    for (const [key, item] of Object.entries(config.items)) {
+        for (const field of ['label', 'help', 'text']) {
+            if (item[field]) {
+                assert.ok(item[field] in en, `${key}.${field} "${item[field]}" has no translation`);
+            }
+        }
+    }
+});
+
+test('objects: instanceObjects keep only info, the rest is created in code with eleven languages', () => {
+    const io = require('../io-package.json');
+    const { OBJECTS } = require('../lib/objects');
+    const names = require('../lib/object-names.json');
+    assert.deepEqual(
+        io.instanceObjects.map(o => o._id),
+        ['info', 'info.connection'],
+        'chat.* and telegram.* must not be in instanceObjects (js-controller resets their ACL at start)',
+    );
+    for (const { id } of OBJECTS) {
+        assert.equal(Object.keys(names[id] || {}).length, 11, id);
     }
 });

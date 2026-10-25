@@ -60,7 +60,19 @@ function fakeAdapterCore(hooks) {
         async getStateAsync(id) {
             return this.db.states[`${NAMESPACE}.${id}`] ?? null;
         }
+        // Like js-controller: merges type/common/native into an existing object and keeps its ACL.
+        async extendObjectAsync(id, obj) {
+            const full = `${NAMESPACE}.${id}`;
+            const old = this.db.objects[full];
+            this.db.objects[full] = old
+                ? { ...old, ...obj, common: { ...old.common, ...obj.common }, acl: old.acl }
+                : { ...obj, acl: { owner: 'system.user.admin', ownerGroup: 'system.group.administrator' } };
+            this.db.save();
+        }
         async subscribeStatesAsync() {}
+        async subscribeForeignStatesAsync(pattern) {
+            this.foreignSubscriptions = [...(this.foreignSubscriptions || []), pattern];
+        }
         async getForeignStateAsync(id) {
             await hooks.getForeignState?.(id);
             return this.db.states[id] ?? null;

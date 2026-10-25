@@ -120,3 +120,30 @@ test('a crash during set_state: the write is not repeated and the model is told 
     assert.equal(state(second.db, 'chat.answer').val, 'The lamp is on now, I checked it.');
     await stopAgent(second.agent);
 });
+
+test('own objects are created with translated names; an ACL set by the user survives the start', async () => {
+    const dataDir = tmp();
+    const userAcl = { owner: 'system.user.mcp-user', ownerGroup: 'system.group.administrator', object: 1636, state: 1636 };
+    const { agent, db } = await startAgent({
+        dataDir,
+        config: { apiKey: '' },
+        responses: [],
+        seed: {
+            // chat.input as an earlier version left it: English name, and an owner the user changed
+            objects: {
+                [`${NAMESPACE}.chat.input`]: {
+                    type: 'state',
+                    common: { name: 'Request to the agent', type: 'string', role: 'text', read: true, write: true },
+                    acl: userAcl,
+                },
+            },
+        },
+    });
+    const input = db.objects[`${NAMESPACE}.chat.input`];
+    assert.deepEqual(input.acl, userAcl, 'the ACL is untouched');
+    assert.equal(input.common.name.ru, 'Запрос к агенту', 'the name is updated');
+    for (const id of ['chat', 'chat.answer', 'chat.pending', 'telegram', 'telegram.chats']) {
+        assert.equal(Object.keys(db.objects[`${NAMESPACE}.${id}`].common.name).length, 11, id);
+    }
+    await stopAgent(agent);
+});

@@ -1,0 +1,80 @@
+{
+	"telegram": {
+		"en": "Telegram",
+		"de": "Telegram",
+		"ru": "Telegram",
+		"pt": "Telegram",
+		"nl": "Telegram",
+		"fr": "Telegram",
+		"it": "Telegram",
+		"es": "Telegram",
+		"pl": "Telegram",
+		"uk": "Telegram",
+		"zh-cn": "Telegram"
+	},
+	"telegram.chats": {
+		"en": "Conversation per Telegram chat",
+		"de": "Unterhaltung je Telegram-Chat",
+		"ru": "Беседа для каждого чата Telegram",
+		"pt": "Conversa por chat do Telegram",
+		"nl": "Gesprek per Telegram-chat",
+		"fr": "Conversation par discussion Telegram",
+		"it": "Conversazione per chat Telegram",
+		"es": "Conversación por chat de Telegram",
+		"pl": "Rozmowa dla każdego czatu Telegram",
+		"uk": "Розмова для кожного чату Telegram",
+		"zh-cn": "每个 Telegram 聊天的对话"
+	},
+	"chat": {
+		"en": "Chat",
+		"de": "Unterhaltung",
+		"ru": "Чат",
+		"pt": "Conversa",
+		"nl": "Gesprek",
+		"fr": "Discussion",
+		"it": "Conversazione",
+		"es": "Conversación",
+		"pl": "Rozmowa",
+		"uk": "Чат з агентом",
+		"zh-cn": "聊天"
+	},
+	"chat.input": {
+		"en": "Request to the agent",
+		"de": "Anfrage an den Agenten",
+		"ru": "Запрос к агенту",
+		"pt": "Pedido ao agente",
+		"nl": "Verzoek aan de agent",
+		"fr": "Demande à l'agent",
+		"it": "Richiesta all'agente",
+		"es": "Solicitud al agente",
+		"pl": "Zapytanie do agenta",
+		"uk": "Запит до агента",
+		"zh-cn": "发给代理的请求"
+	},
+	"chat.answer": {
+		"en": "Answer of the agent",
+		"de": "Antwort des Agenten",
+		"ru": "Ответ агента",
+		"pt": "Resposta do agente",
+		"nl": "Antwoord van de agent",
+		"fr": "Réponse de l'agent",
+		"it": "Risposta dell'agente",
+		"es": "Respuesta del agente",
+		"pl": "Odpowiedź agenta",
+		"uk": "Відповідь агента",
+		"zh-cn": "代理的回答"
+	},
+	"chat.pending": {
+		"en": "Request in progress",
+		"de": "Anfrage in Bearbeitung",
+		"ru": "Запрос выполняется",
+		"pt": "Pedido em curso",
+		"nl": "Verzoek wordt verwerkt",
+		"fr": "Demande en cours",
+		"it": "Richiesta in corso",
+		"es": "Solicitud en curso",
+		"pl": "Zapytanie w toku",
+		"uk": "Запит виконується",
+		"zh-cn": "请求处理中"
+	}
+}

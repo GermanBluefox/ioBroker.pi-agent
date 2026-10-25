@@ -8,5 +8,12 @@
 	"Write allowlist": "Elenco di scrittura consentita",
 	"One regular expression per line. The agent may only write states whose ID matches one of them.": "Un'espressione regolare per riga. L'agente può scrivere solo gli stati il cui ID corrisponde a una di esse.",
 	"Instructions": "Istruzioni",
-	"Additional instructions for the agent": "Istruzioni aggiuntive per l'agente"
+	"Additional instructions for the agent": "Istruzioni aggiuntive per l'agente",
+	"Telegram": "Telegram",
+	"Telegram instance": "Istanza Telegram",
+	"Empty: the agent does not use Telegram": "Vuoto: l'agente non usa Telegram",
+	"Prefix": "Prefisso",
+	"Only messages that start with this text go to the agent, e.g. /ai. Empty: every message of an allowed user": "Solo i messaggi che iniziano con questo testo vanno all'agente, ad es. /ai. Vuoto: ogni messaggio di un utente consentito",
+	"Allowed Telegram users": "Utenti Telegram consentiti",
+	"Telegram user ID, user name or first name (as in the telegram adapter), one per line. Messages from anyone else are ignored.": "ID, nome utente o nome Telegram (come nell'adattatore telegram), uno per riga. I messaggi di chiunque altro vengono ignorati."
 }

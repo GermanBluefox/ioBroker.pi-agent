@@ -45,6 +45,9 @@ before it runs, so an interrupted request continues after the adapter starts aga
 | Dry run         | On by default. Write requests are logged and answered, but not executed.         |
 | Write allowlist | One regular expression per line. Empty means the agent cannot write anything.   |
 | Instructions    | Text appended to the system prompt, for example room names and house rules.     |
+| Telegram instance | A `telegram` instance whose bot talks to the agent. Empty: Telegram is not used. |
+| Prefix          | Only messages that start with it go to the agent, e.g. `/ai`. Empty: every message of an allowed user. |
+| Allowed Telegram users | Telegram user ID, user name or first name (as in the telegram adapter), one per line. Messages from anyone else are ignored. |
 
 Example allowlist:
 
@@ -66,10 +69,23 @@ sendTo('pi-agent.0', 'ask', { text: 'Is the living room light on?' }, result => 
 The answer of a `sendTo` request comes back only through the callback (`result.answer`, or `result.error`); it is not
 written to `chat.answer`.
 
-`pi-agent.0.chat.pending` holds the request that is currently running. If the adapter stops in the middle, the request
-continues on the next start, and its answer is then written to `chat.answer` - also for a request that came in by
-`sendTo`, because its caller is no longer waiting. A caller that was interrupted gets
-`{ error: "Interrupted by shutdown; the request continues after the next start" }`.
+`pi-agent.0.chat.pending` lists the requests that were accepted but not answered yet. If the adapter stops in the
+middle, they continue on the next start. The answer of a request from `chat.input` or `sendTo` is then written to
+`chat.answer` (the `sendTo` caller is no longer waiting), the answer of a Telegram request goes to its chat. A
+`sendTo` caller that was interrupted gets `{ error: "Interrupted by shutdown; the request continues after the next start" }`.
+
+### Telegram
+
+Select a `telegram` instance, enter the allowed users and, if the bot also serves other scripts, a prefix such as
+`/ai`. Then write to the bot: `/ai Is the living room light on?`
+
+- Every chat has its own conversation with its own history; `pi-agent.0.telegram.chats` maps chat ids to them.
+- Messages from users who are not on the list are ignored and logged as a warning. An empty list allows nobody.
+- A first name such as `Alex` counts only for users the telegram adapter knows (authenticated there), because anybody
+  can choose any first name in Telegram. Two known users with the same first name are both allowed; use the user name
+  or the ID to tell them apart.
+- A message that the telegram adapter delivers twice is answered once.
+- Long answers are split into several messages.
 
 ### DeepSeek
 
@@ -84,6 +100,11 @@ Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Avai
 - The conversation is stored unencrypted in the instance data directory.
 
 ## Changelog
+
+### **WORK IN PROGRESS**
+
+- Telegram: talk to the agent through a telegram instance, with allowed users, prefix and one conversation per chat
+- Requests that wait in the queue also continue after a restart
 
 ### 0.0.1 (2026-10-25)
 

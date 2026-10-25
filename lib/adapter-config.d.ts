@@ -8,6 +8,9 @@ declare global {
             writeAllow: string;
             instructions: string;
             dryRun: boolean;
+            telegramInstance: string;
+            telegramUsers: string;
+            telegramPrefix: string;
         }
     }
 }
