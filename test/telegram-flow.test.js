@@ -163,3 +163,49 @@ test('Markdown in an answer is sent as Telegram HTML', async () => {
     ]);
     await stopAgent(agent);
 });
+
+test('chats do not wait for each other: a slow request in one chat does not block another chat', async () => {
+    const f = await faux();
+    let release;
+    const gate = new Promise(r => (release = r));
+    let entered = false;
+    const { agent, db } = await startAgent({
+        dataDir: tmp(),
+        config: CONFIG,
+        seed: CRASH_SEED,
+        responses: [
+            // chat 100 calls a tool that hangs until released
+            f.fauxAssistantMessage(f.fauxToolCall('get_state', { id: 'x.0.lamp' }), { stopReason: 'toolUse' }),
+            // chat 200 is answered while chat 100 still waits
+            f.fauxAssistantMessage('Bob first'),
+            f.fauxAssistantMessage('Alex later'),
+        ],
+        hooks: {
+            getForeignState: async () => {
+                entered = true;
+                await gate;
+            },
+        },
+    });
+    const slow = receive(agent, db, { chatId: 100, userId: 1, messageId: 31, name: 'Alex', text: '/ai lamp?' });
+    await waitFor(() => entered, 'the slow tool call');
+    await receive(agent, db, { chatId: 200, userId: 2, messageId: 32, name: 'Bob', text: '/ai hi' });
+    assert.deepEqual(sentToTelegram(agent), [{ text: 'Bob first', chatId: '200', parse_mode: 'HTML' }]);
+    release();
+    await slow;
+    assert.deepEqual(sentToTelegram(agent)[1], { text: 'Alex later', chatId: '100', parse_mode: 'HTML' });
+    await stopAgent(agent);
+});
+
+test('an answer that would give broken HTML goes out as plain text, with a warning', async () => {
+    const f = await faux();
+    const { agent, db } = await startAgent({
+        dataDir: tmp(),
+        config: CONFIG,
+        responses: [f.fauxAssistantMessage('**fett *kursiv** text*')],
+    });
+    await receive(agent, db, { chatId: 100, userId: 1, messageId: 41, name: 'Alex', text: '/ai format' });
+    assert.deepEqual(sentToTelegram(agent), [{ text: '**fett *kursiv** text*', chatId: '100' }]);
+    assert.ok(agent.logs.some(([lvl, m]) => lvl === 'warn' && m.includes('sent as plain text')));
+    await stopAgent(agent);
+});

@@ -10,6 +10,7 @@ const {
     telegramRequestId,
     splitMessage,
     markdownToTelegramHtml,
+    isWellFormedHtml,
 } = require('../lib/telegram');
 
 test('allowed users: ids and names, "@" and case ignored, comments skipped', () => {
@@ -85,4 +86,15 @@ test('Markdown conversion leaves ids and arithmetic alone', () => {
     assert.equal(h('2*3*4'), '2*3*4');
     assert.equal(h('hm_rpc_0__x__y'), 'hm_rpc_0__x__y');
     assert.equal(h('`a<b`'), '<code>a&lt;b</code>');
+});
+
+test('HTML check: overlapping tags from Markdown are detected, normal answers pass', () => {
+    assert.equal(isWellFormedHtml(markdownToTelegramHtml('**fett** und *kursiv*')), true);
+    assert.equal(isWellFormedHtml(markdownToTelegramHtml('**fett *kursiv** text*')), false);
+    assert.equal(isWellFormedHtml('<b>offen'), false);
+    assert.equal(isWellFormedHtml('a &lt;b&gt; c'), true);
+});
+
+test('a quote in a link URL cannot break the href attribute', () => {
+    assert.equal(markdownToTelegramHtml('[a](https://x.de/?q="1")'), '<a href="https://x.de/?q=&quot;1&quot;">a</a>');
 });

@@ -97,9 +97,18 @@ Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Avai
 - The model decides which tools to call. The allowlist and the dry run are your protection, not the prompt.
 - The text of your requests and the values the agent reads are sent to the provider. Do not give it access to states
   that contain secrets.
-- The conversation is stored unencrypted in the instance data directory.
+- The conversations are stored unencrypted in the instance data directory (`session.sqlite`, SQLite built into
+  Node.js). An installation that still has the JSONL store of version 0.0.1/0.0.2 (folder `session`) switches to
+  SQLite at the first start without pending requests; the old folder is renamed to `session.jsonl-<date>` and kept.
+  Earlier history is not carried over, and the Telegram chats start new conversations.
 
 ## Changelog
+
+### **WORK IN PROGRESS**
+
+- Conversations are stored in SQLite instead of JSONL, which kept the whole history in memory
+- Every conversation has its own queue: Telegram chats no longer wait for each other
+- An answer that would give broken HTML is sent to Telegram as plain text; a quote in a link URL is escaped
 
 ### 0.0.2 (2026-10-25)
 

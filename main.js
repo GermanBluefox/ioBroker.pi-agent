@@ -6,6 +6,7 @@ const { parseAllowlist, requestIdFor } = require('./lib/guard');
 const { createIoBrokerExtension } = require('./lib/tools');
 const { createModelsWithKey } = require('./lib/providers');
 const { ensureObjects } = require('./lib/objects');
+const { openStore } = require('./lib/store');
 const {
     parseAllowedUsers,
     isAllowedUser,
@@ -14,6 +15,7 @@ const {
     telegramRequestId,
     splitMessage,
     markdownToTelegramHtml,
+    isWellFormedHtml,
     TELEGRAM_INSTRUCTIONS,
 } = require('./lib/telegram');
 
@@ -72,8 +74,8 @@ class PiAgent extends utils.Adapter {
         this.pendingWrite = Promise.resolve();
         /** Set in onUnload: errors from the closing harness are interruptions, not failures. */
         this.stopping = false;
-        /** Runs are serialised: one run at a time over all conversations. */
-        this.queue = Promise.resolve();
+        /** One queue per conversation ("root" or "telegram:<chatId>"): runs of one conversation are serialised. */
+        this.queues = new Map();
         this.readyPromise = new Promise(resolve => {
             this.markReady = resolve;
         });
@@ -123,10 +125,9 @@ class PiAgent extends utils.Adapter {
         const { spec, models } = await createModelsWithKey(this.config.provider, this.config.apiKey);
         const modelId = String(this.config.modelId || '').trim() || spec.defaultModel;
 
-        const [{ BACKGROUND_CONTEXT }, durable, jsonl, ai] = await Promise.all([
+        const [{ BACKGROUND_CONTEXT }, durable, ai] = await Promise.all([
             import('@earendil-works/chord/context'),
             import('@earendil-works/pi-durable'),
-            import('@earendil-works/pi-durable/storage/jsonl/node'),
             import('@earendil-works/pi-ai'),
         ]);
         this.context = BACKGROUND_CONTEXT;
@@ -140,8 +141,21 @@ class PiAgent extends utils.Adapter {
             })),
         );
 
-        const dir = utils.getAbsoluteInstanceDataDir(this);
-        const storage = await jsonl.openNodeJsonlStorage(`${dir}/session`, this.context);
+        const stored = await this.getStateAsync('chat.pending');
+        let pendingCount = 0;
+        try {
+            pendingCount = parsePending(stored?.val).length;
+        } catch {
+            // an unreadable list is dropped later by resumePending
+        }
+        const { storage, migrated } = await openStore(utils.getAbsoluteInstanceDataDir(this), this.context, {
+            pendingCount,
+            log: this.log,
+        });
+        if (migrated) {
+            // the chats' conversations lived in the old store
+            await this.setStateAsync('telegram.chats', { val: '', ack: true });
+        }
         this.harness = await durable.Harness.open(storage, { models, registry }, this.context);
 
         this.model = { provider: this.config.provider, modelId };
@@ -197,7 +211,15 @@ class PiAgent extends utils.Adapter {
             this.context,
         );
         this.chats[target.chatId] = created.id;
-        await this.setStateAsync('telegram.chats', { val: JSON.stringify(this.chats), ack: true });
+        // chats run in parallel; chained writes always store the newest map
+        this.chatsWrite = (this.chatsWrite || Promise.resolve())
+            .then(async () => {
+                await this.setStateAsync('telegram.chats', { val: JSON.stringify(this.chats), ack: true });
+            })
+            .catch(e => {
+                this.log.warn(`Telegram chats could not be saved: ${e.message}`);
+            });
+        await this.chatsWrite;
         this.log.info(`Telegram: new conversation for chat ${target.chatId}`);
         return created;
     }
@@ -235,7 +257,10 @@ class PiAgent extends utils.Adapter {
             this.pending = this.pending.filter(p => p.requestId !== requestId).concat({ requestId, content, target });
             await this.savePending();
         })();
-        const run = Promise.all([admitted, this.queue]).then(async () => {
+        // One queue per conversation: a chat waits for its own earlier request, not for other chats.
+        const key = target.kind === 'telegram' ? `telegram:${target.chatId}` : 'root';
+        const previous = this.queues.get(key) || Promise.resolve();
+        const run = Promise.all([admitted, previous]).then(async () => {
             try {
                 const conversation = await this.conversationFor(target);
                 const submission = await conversation.submit({ type: 'input', content, requestId }, this.context);
@@ -253,7 +278,10 @@ class PiAgent extends utils.Adapter {
                 throw e;
             }
         });
-        this.queue = run.catch(() => undefined);
+        const tail = run.catch(() => undefined);
+        this.queues.set(key, tail);
+        // forget a finished queue so idle chats do not accumulate
+        void tail.then(() => this.queues.get(key) === tail && this.queues.delete(key));
         admitted.catch(() => undefined);
         return run;
     }
@@ -316,12 +344,15 @@ class PiAgent extends utils.Adapter {
     async deliver(target, text) {
         if (target.kind === 'telegram') {
             for (const part of splitMessage(text)) {
-                // Telegram shows Markdown literally; its HTML mode renders bold, italic, code and links
-                this.sendTo(this.telegram, 'send', {
-                    text: markdownToTelegramHtml(part),
-                    chatId: target.chatId,
-                    parse_mode: 'HTML',
-                });
+                // Telegram shows Markdown literally; its HTML mode renders bold, italic, code and links.
+                // The telegram adapter does not report a rejected message back, so only well-formed HTML is sent.
+                const html = markdownToTelegramHtml(part);
+                if (isWellFormedHtml(html)) {
+                    this.sendTo(this.telegram, 'send', { text: html, chatId: target.chatId, parse_mode: 'HTML' });
+                } else {
+                    this.log.warn('Telegram: the answer could not be converted to valid HTML; sent as plain text');
+                    this.sendTo(this.telegram, 'send', { text: part, chatId: target.chatId });
+                }
             }
             return;
         }
