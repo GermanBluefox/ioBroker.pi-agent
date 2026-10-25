@@ -104,7 +104,7 @@ Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Avai
 
 ## Changelog
 
-### **WORK IN PROGRESS**
+### 0.0.3 (2026-10-26)
 
 - Conversations are stored in SQLite instead of JSONL, which kept the whole history in memory
 - Every conversation has its own queue: Telegram chats no longer wait for each other

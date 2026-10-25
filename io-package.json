@@ -1,8 +1,21 @@
 {
 	"common": {
 		"name": "pi-agent",
-		"version": "0.0.2",
+		"version": "0.0.3",
 		"news": {
+			"0.0.3": {
+				"en": "Conversations are stored in SQLite (less memory); Telegram chats no longer wait for each other; safer Telegram formatting",
+				"de": "Unterhaltungen werden in SQLite gespeichert (weniger Speicher); Telegram-Chats warten nicht mehr aufeinander; sicherere Telegram-Formatierung",
+				"ru": "Беседы хранятся в SQLite (меньше памяти); чаты Telegram больше не ждут друг друга; более надёжное форматирование в Telegram",
+				"pt": "As conversas são guardadas em SQLite (menos memória); os chats do Telegram já não esperam uns pelos outros; formatação do Telegram mais segura",
+				"nl": "Gesprekken worden in SQLite opgeslagen (minder geheugen); Telegram-chats wachten niet meer op elkaar; veiligere Telegram-opmaak",
+				"fr": "Les conversations sont stockées dans SQLite (moins de mémoire) ; les discussions Telegram ne s’attendent plus ; mise en forme Telegram plus sûre",
+				"it": "Le conversazioni sono salvate in SQLite (meno memoria); le chat Telegram non si aspettano più a vicenda; formattazione Telegram più sicura",
+				"es": "Las conversaciones se guardan en SQLite (menos memoria); los chats de Telegram ya no se esperan entre sí; formato de Telegram más seguro",
+				"pl": "Rozmowy są zapisywane w SQLite (mniej pamięci); czaty Telegram nie czekają już na siebie; bezpieczniejsze formatowanie Telegram",
+				"uk": "Розмови зберігаються в SQLite (менше памʼяті); чати Telegram більше не чекають один на одного; надійніше форматування в Telegram",
+				"zh-cn": "对话保存在 SQLite 中（占用内存更少）；Telegram 聊天不再相互等待；Telegram 格式更安全"
+			},
 			"0.0.2": {
 				"en": "Telegram answers keep their formatting (bold, italic, code, links); released with npm provenance",
 				"de": "Telegram-Antworten behalten ihre Formatierung (fett, kursiv, Code, Links); mit npm-Provenance veröffentlicht",

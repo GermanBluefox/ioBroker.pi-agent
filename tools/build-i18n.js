@@ -256,6 +256,19 @@ const DESC = [
 ];
 /** common.news per version, newest first; the repository builder keeps at most seven. */
 const NEWS = {};
+NEWS['0.0.3'] = [
+    'Conversations are stored in SQLite (less memory); Telegram chats no longer wait for each other; safer Telegram formatting',
+    'Unterhaltungen werden in SQLite gespeichert (weniger Speicher); Telegram-Chats warten nicht mehr aufeinander; sicherere Telegram-Formatierung',
+    'Беседы хранятся в SQLite (меньше памяти); чаты Telegram больше не ждут друг друга; более надёжное форматирование в Telegram',
+    'As conversas são guardadas em SQLite (menos memória); os chats do Telegram já não esperam uns pelos outros; formatação do Telegram mais segura',
+    'Gesprekken worden in SQLite opgeslagen (minder geheugen); Telegram-chats wachten niet meer op elkaar; veiligere Telegram-opmaak',
+    'Les conversations sont stockées dans SQLite (moins de mémoire) ; les discussions Telegram ne s’attendent plus ; mise en forme Telegram plus sûre',
+    'Le conversazioni sono salvate in SQLite (meno memoria); le chat Telegram non si aspettano più a vicenda; formattazione Telegram più sicura',
+    'Las conversaciones se guardan en SQLite (menos memoria); los chats de Telegram ya no se esperan entre sí; formato de Telegram más seguro',
+    'Rozmowy są zapisywane w SQLite (mniej pamięci); czaty Telegram nie czekają już na siebie; bezpieczniejsze formatowanie Telegram',
+    'Розмови зберігаються в SQLite (менше памʼяті); чати Telegram більше не чекають один на одного; надійніше форматування в Telegram',
+    '对话保存在 SQLite 中（占用内存更少）；Telegram 聊天不再相互等待；Telegram 格式更安全',
+];
 NEWS['0.0.2'] = [
     'Telegram answers keep their formatting (bold, italic, code, links); released with npm provenance',
     'Telegram-Antworten behalten ihre Formatierung (fett, kursiv, Code, Links); mit npm-Provenance veröffentlicht',
