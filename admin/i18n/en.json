@@ -4,7 +4,7 @@
 	"API key": "API key",
 	"Dry run": "Dry run",
 	"Log write requests instead of executing them": "Log write requests instead of executing them",
-	"Leave empty to use the default model of the provider": "Leave empty to use the default model of the provider",
+	"Choose a model of the provider or type any model ID. Empty: the default model of the provider": "Choose a model of the provider or type any model ID. Empty: the default model of the provider",
 	"Write allowlist": "Write allowlist",
 	"One regular expression per line. The agent may only write states whose ID matches one of them.": "One regular expression per line. The agent may only write states whose ID matches one of them.",
 	"Instructions": "Instructions",

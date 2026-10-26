@@ -19,3 +19,16 @@ for (const name of Object.keys(PROVIDERS)) {
 test('unknown provider is refused', async () => {
 	await assert.rejects(loadProvider('nope'), /Unknown provider/);
 });
+
+test('listModels: default first, then unique catalog ids with readable labels', async () => {
+    const { listModels } = require('../lib/providers');
+    for (const name of Object.keys(PROVIDERS)) {
+        const options = await listModels(name);
+        assert.equal(options[0].value, '');
+        assert.equal(options[0].label, `Default (${PROVIDERS[name].defaultModel})`);
+        const ids = options.slice(1).map(o => o.value);
+        assert.ok(ids.length > 0, name);
+        assert.equal(new Set(ids).size, ids.length, `${name}: ids unique`);
+        assert.ok(ids.includes(PROVIDERS[name].defaultModel), `${name}: default model is in the list`);
+    }
+});

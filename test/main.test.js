@@ -147,3 +147,64 @@ test('own objects are created with translated names; an ACL set by the user surv
     }
     await stopAgent(agent);
 });
+
+test('the model field of the admin page lists the catalog models of the chosen provider, also without API key', async () => {
+    const { agent } = await startAgent({ dataDir: tmp(), config: { apiKey: '' }, responses: [] });
+    const ask = async provider => {
+        agent.sent.length = 0;
+        await agent.onMessage({ command: 'listModels', message: { provider }, from: 'admin.0', callback: 'cb' });
+        const [to, command, options, callback] = agent.sent[0];
+        assert.deepEqual([to, command, callback], ['admin.0', 'listModels', 'cb']);
+        return options;
+    };
+    const deepseek = await ask('deepseek');
+    assert.deepEqual(deepseek[0], { value: '', label: 'Default (deepseek-flash)', noTranslation: true });
+    assert.ok(deepseek.some(o => o.value === 'deepseek-v4-pro'), JSON.stringify(deepseek));
+    const anthropic = await ask('anthropic');
+    assert.equal(anthropic[0].label, 'Default (claude-sonnet-5-5)');
+    assert.ok(!anthropic.some(o => o.value.startsWith('deepseek')), 'switching the provider switches the list');
+    assert.deepEqual(await ask('nope'), [], 'an unknown provider gives an empty list, not an error');
+    await stopAgent(agent);
+});
+
+test('an outdated "supportedMessages" of 0.0.1-0.0.4 is removed from the instance object once', async () => {
+    const dataDir = tmp();
+    const instanceId = `system.adapter.${NAMESPACE}`;
+    const first = await startAgent({
+        dataDir,
+        responses: [],
+        seed: {
+            objects: {
+                [instanceId]: {
+                    type: 'instance',
+                    common: { messagebox: true, supportedMessages: { custom: false } },
+                    native: { apiKey: 'kept-as-stored' },
+                },
+            },
+        },
+    });
+    const migrated = first.db.objects[instanceId];
+    assert.equal('supportedMessages' in migrated.common, false);
+    assert.equal(migrated.common.messagebox, true);
+    assert.equal(migrated.native.apiKey, 'kept-as-stored', 'the rest of the object is written back unchanged');
+    assert.ok(first.agent.logs.some(([, m]) => m.startsWith('Message box enabled')));
+    assert.equal(first.db.states[`${NAMESPACE}.info.connection`].val, false, 'no agent start before the restart');
+    await stopAgent(first.agent);
+
+    // after the restart: nothing to do any more, the agent starts normally
+    const second = await startAgent({ dataDir, responses: [] });
+    assert.ok(!second.agent.logs.some(([, m]) => m.startsWith('Message box enabled')));
+    assert.equal(second.db.states[`${NAMESPACE}.info.connection`].val, true);
+    await stopAgent(second.agent);
+});
+
+test('a "supportedMessages" with a true value is left alone', async () => {
+    const instanceId = `system.adapter.${NAMESPACE}`;
+    const { agent, db } = await startAgent({
+        dataDir: tmp(),
+        responses: [],
+        seed: { objects: { [instanceId]: { type: 'instance', common: { supportedMessages: { custom: true } } } } },
+    });
+    assert.deepEqual(db.objects[instanceId].common.supportedMessages, { custom: true });
+    await stopAgent(agent);
+});

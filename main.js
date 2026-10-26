@@ -4,7 +4,7 @@ const utils = require('@iobroker/adapter-core');
 const crypto = require('node:crypto');
 const { parseAllowlist, requestIdFor } = require('./lib/guard');
 const { createIoBrokerExtension } = require('./lib/tools');
-const { createModelsWithKey } = require('./lib/providers');
+const { createModelsWithKey, listModels } = require('./lib/providers');
 const { ensureObjects } = require('./lib/objects');
 const { openStore } = require('./lib/store');
 const { resolveTimeZone } = require('./lib/time');
@@ -90,6 +90,10 @@ class PiAgent extends utils.Adapter {
     async onReady() {
         try {
             await this.setStateAsync('info.connection', { val: false, ack: true });
+            if (await this.enableMessagebox()) {
+                this.markReady();
+                return; // js-controller restarts the instance because its object changed
+            }
             // Created here, not in instanceObjects: js-controller would reset their ACL at every start.
             await ensureObjects(this);
             this.allowlist = parseAllowlist(this.config.writeAllow, (line, msg) =>
@@ -127,6 +131,33 @@ class PiAgent extends utils.Adapter {
         } catch (e) {
             this.log.error(`Start failed: ${e.message}`);
             this.markReady();
+        }
+    }
+
+    /**
+     * Versions 0.0.1-0.0.4 declared "supportedMessages": {"custom": false}. When that object exists, js-controller
+     * ignores common.messagebox and subscribes to messages only if one of its values is true - so sendTo never
+     * arrived. An update does not remove the key from an existing instance object, so it is removed here, once.
+     *
+     * @returns {Promise<boolean>} true when the instance object was changed (js-controller then restarts the instance)
+     */
+    async enableMessagebox() {
+        const id = `system.adapter.${this.namespace}`;
+        try {
+            const obj = await this.getForeignObjectAsync(id);
+            const supported = obj?.common && Object(obj.common).supportedMessages;
+            if (!supported || typeof supported !== 'object' || Object.values(supported).some(v => v !== false)) {
+                return false;
+            }
+            delete Object(obj.common).supportedMessages;
+            await this.setForeignObjectAsync(id, obj);
+            this.log.info(
+                'Message box enabled: removed an outdated "supportedMessages" from the instance; it restarts once',
+            );
+            return true;
+        } catch (e) {
+            this.log.warn(`Could not check the message box setting of the instance: ${e.message}`);
+            return false;
         }
     }
 
@@ -558,6 +589,19 @@ class PiAgent extends utils.Adapter {
 
     /** @param {ioBroker.Message} obj message from a script or another adapter */
     async onMessage(obj) {
+        if (obj?.command === 'listModels') {
+            // model field of the admin page; needs no API key and no running agent
+            let options = [];
+            try {
+                options = await listModels(String(Object(obj.message).provider || this.config.provider || ''));
+            } catch (e) {
+                this.log.debug(`No model list: ${e.message}`);
+            }
+            if (obj.callback) {
+                this.sendTo(obj.from, obj.command, options, obj.callback);
+            }
+            return;
+        }
         if (!obj || obj.command !== 'ask') {
             return;
         }

@@ -77,18 +77,18 @@ const ADMIN = {
         'Лише записувати запити на запис у журнал, не виконуючи їх',
         '仅记录写入请求而不执行',
     ],
-    'Leave empty to use the default model of the provider': [
-        'Leave empty to use the default model of the provider',
-        'Leer lassen, um das Standardmodell des Anbieters zu verwenden',
-        'Оставьте пустым, чтобы использовать модель провайдера по умолчанию',
-        'Deixe vazio para usar o modelo padrão do provedor',
-        'Leeg laten om het standaardmodel van de aanbieder te gebruiken',
-        'Laisser vide pour utiliser le modèle par défaut du fournisseur',
-        'Lasciare vuoto per usare il modello predefinito del fornitore',
-        'Dejar vacío para usar el modelo predeterminado del proveedor',
-        'Pozostaw puste, aby użyć domyślnego modelu dostawcy',
-        'Залиште порожнім, щоб використовувати модель провайдера за замовчуванням',
-        '留空以使用提供商的默认模型',
+    'Choose a model of the provider or type any model ID. Empty: the default model of the provider': [
+        'Choose a model of the provider or type any model ID. Empty: the default model of the provider',
+        'Ein Modell des Anbieters wählen oder eine beliebige Modell-ID eingeben. Leer: das Standardmodell des Anbieters',
+        'Выберите модель провайдера или введите любой ID модели. Пусто: модель провайдера по умолчанию',
+        'Escolha um modelo do provedor ou escreva qualquer ID de modelo. Vazio: o modelo predefinido do provedor',
+        'Kies een model van de aanbieder of typ een willekeurige model-ID. Leeg: het standaardmodel van de aanbieder',
+        "Choisissez un modèle du fournisseur ou saisissez n'importe quel ID de modèle. Vide : le modèle par défaut du fournisseur",
+        'Scegli un modello del fornitore o digita qualsiasi ID di modello. Vuoto: il modello predefinito del fornitore',
+        'Elija un modelo del proveedor o escriba cualquier ID de modelo. Vacío: el modelo predeterminado del proveedor',
+        'Wybierz model dostawcy lub wpisz dowolny identyfikator modelu. Puste: domyślny model dostawcy',
+        'Виберіть модель провайдера або введіть будь-який ID моделі. Порожньо: модель провайдера за замовчуванням',
+        '选择提供商的模型或输入任意模型 ID。留空：使用提供商的默认模型',
     ],
     'Write allowlist': [
         'Write allowlist',
@@ -335,6 +335,19 @@ const DESC = [
 ];
 /** common.news per version, newest first; the repository builder keeps at most seven. */
 const NEWS = {};
+NEWS['0.0.5'] = [
+    'Fix: sendTo from scripts and the admin page reaches the adapter again (the instance restarts once); model list in the settings',
+    'Fehlerbehebung: sendTo aus Skripten und der Admin-Seite erreicht den Adapter wieder (die Instanz startet einmal neu); Modellliste in den Einstellungen',
+    'Исправление: sendTo из скриптов и страницы админки снова доходит до адаптера (инстанс один раз перезапустится); список моделей в настройках',
+    'Correção: o sendTo de scripts e da página de administração volta a chegar ao adaptador (a instância reinicia uma vez); lista de modelos nas definições',
+    'Oplossing: sendTo vanuit scripts en de beheerpagina bereikt de adapter weer (de instantie herstart eenmaal); modellenlijst in de instellingen',
+    "Correction : le sendTo des scripts et de la page d'administration atteint de nouveau l'adaptateur (l'instance redémarre une fois) ; liste des modèles dans les paramètres",
+    "Correzione: il sendTo da script e dalla pagina di amministrazione raggiunge di nuovo l'adattatore (l'istanza si riavvia una volta); elenco dei modelli nelle impostazioni",
+    'Corrección: el sendTo desde scripts y la página de administración vuelve a llegar al adaptador (la instancia se reinicia una vez); lista de modelos en la configuración',
+    'Poprawka: sendTo ze skryptów i strony administracyjnej znów dociera do adaptera (instancja uruchomi się ponownie jeden raz); lista modeli w ustawieniach',
+    'Виправлення: sendTo зі скриптів і сторінки адмінки знову доходить до адаптера (інстанс один раз перезапуститься); список моделей у налаштуваннях',
+    '修复：来自脚本和管理页面的 sendTo 再次到达适配器（实例会重启一次）；设置中的模型列表',
+];
 NEWS['0.0.4'] = [
     'Confirm writes with buttons in Telegram; reminders; history values; token use and cost; local time zone',
     'Schreibvorgänge per Schaltfläche in Telegram bestätigen; Erinnerungen; Verlaufswerte; Token-Verbrauch und Kosten; lokale Zeitzone',

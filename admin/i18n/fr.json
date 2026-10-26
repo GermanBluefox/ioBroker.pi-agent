@@ -4,7 +4,7 @@
 	"API key": "Clé API",
 	"Dry run": "Essai à blanc",
 	"Log write requests instead of executing them": "Journaliser les demandes d'écriture au lieu de les exécuter",
-	"Leave empty to use the default model of the provider": "Laisser vide pour utiliser le modèle par défaut du fournisseur",
+	"Choose a model of the provider or type any model ID. Empty: the default model of the provider": "Choisissez un modèle du fournisseur ou saisissez n'importe quel ID de modèle. Vide : le modèle par défaut du fournisseur",
 	"Write allowlist": "Liste d'écriture autorisée",
 	"One regular expression per line. The agent may only write states whose ID matches one of them.": "Une expression régulière par ligne. L'agent ne peut écrire que les états dont l'ID correspond à l'une d'elles.",
 	"Instructions": "Consignes",

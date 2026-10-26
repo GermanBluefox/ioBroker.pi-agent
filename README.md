@@ -40,7 +40,7 @@ before it runs, so an interrupted request continues after the adapter starts aga
 
 | Setting         | Meaning                                                                          |
 | --------------- | -------------------------------------------------------------------------------- |
-| Provider, Model | The language model. Empty model: the default of the provider (`claude-sonnet-5-5`, `gpt-6-sol`, `deepseek-flash`). |
+| Provider, Model | The language model. The model field lists the models of the chosen provider (the instance must be running for the list); any other model ID can be typed in. Empty: the default of the provider (`claude-sonnet-5-5`, `gpt-6-sol`, `deepseek-flash`). |
 | API key         | Stored encrypted.                                                                |
 | Dry run         | On by default. Write requests are logged and answered, but not executed.         |
 | Write allowlist | One regular expression per line. Empty means the agent cannot write anything.   |
@@ -119,6 +119,11 @@ Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Avai
   Earlier history is not carried over, and the Telegram chats start new conversations.
 
 ## Changelog
+
+### 0.0.5 (2026-10-26)
+
+- Model field: a list of the models of the chosen provider, a model ID can still be typed in
+- Fix: sendTo (e.g. `ask` from scripts, the model list) never reached the adapter, because `supportedMessages: {custom: false}` switched the message box off; the outdated key is removed from the instance at the first start, which restarts the instance once
 
 ### 0.0.4 (2026-10-26)
 

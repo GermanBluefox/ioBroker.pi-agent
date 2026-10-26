@@ -81,7 +81,12 @@ function fakeAdapterCore(hooks) {
             return Object.fromEntries(ids.filter(id => this.db.states[id]).map(id => [id, this.db.states[id]]));
         }
         async getForeignObjectAsync(id) {
-            return this.db.objects[id] ?? null;
+            const obj = this.db.objects[id];
+            return obj ? JSON.parse(JSON.stringify(obj)) : null;
+        }
+        async setForeignObjectAsync(id, obj) {
+            this.db.objects[id] = JSON.parse(JSON.stringify(obj));
+            this.db.save();
         }
         async getObjectViewAsync(design, search, params) {
             const type = search === 'instance' ? 'instance' : 'state';

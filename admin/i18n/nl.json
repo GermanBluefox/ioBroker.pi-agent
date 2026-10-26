@@ -4,7 +4,7 @@
 	"API key": "API-sleutel",
 	"Dry run": "Proefrun",
 	"Log write requests instead of executing them": "Schrijfverzoeken alleen loggen en niet uitvoeren",
-	"Leave empty to use the default model of the provider": "Leeg laten om het standaardmodel van de aanbieder te gebruiken",
+	"Choose a model of the provider or type any model ID. Empty: the default model of the provider": "Kies een model van de aanbieder of typ een willekeurige model-ID. Leeg: het standaardmodel van de aanbieder",
 	"Write allowlist": "Toegestane schrijflijst",
 	"One regular expression per line. The agent may only write states whose ID matches one of them.": "Eén reguliere expressie per regel. De agent mag alleen states schrijven waarvan de ID overeenkomt met een ervan.",
 	"Instructions": "Instructies",

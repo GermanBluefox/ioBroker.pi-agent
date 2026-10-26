@@ -55,7 +55,7 @@ test('io-package: the API key is declared encrypted and protected at the top lev
 
 test('jsonConfig: only component types the admin knows', () => {
 	const config = require('../admin/jsonConfig.json');
-	const known = new Set(['text', 'password', 'number', 'checkbox', 'select', 'instance', 'header']);
+	const known = new Set(['text', 'password', 'number', 'checkbox', 'select', 'instance', 'header', 'autocompleteSendTo']);
 	for (const [key, item] of Object.entries(config.items)) {
 		assert.ok(known.has(item.type), `${key} uses unknown type "${item.type}"`);
 	}
@@ -109,4 +109,15 @@ test('objects: instanceObjects keep only info, the rest is created in code with 
     for (const { id } of OBJECTS) {
         assert.equal(Object.keys(names[id] || {}).length, 11, id);
     }
+});
+
+test('io-package: the messagebox is really enabled (sendTo reaches the adapter)', () => {
+    const io = require('../io-package.json');
+    // js-controller (isMessageboxSupported): when common.supportedMessages exists, common.messagebox is ignored and
+    // the adapter subscribes to messages only if one of its values is true. {custom: false} switched sendTo off.
+    const supported = io.common.supportedMessages;
+    const enabled = supported && typeof supported === 'object'
+        ? Object.values(supported).some(v => v !== false)
+        : Boolean(io.common.messagebox);
+    assert.ok(enabled, 'sendTo would never reach the adapter');
 });

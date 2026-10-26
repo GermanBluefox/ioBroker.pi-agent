@@ -26,14 +26,20 @@
 			"xl": 4
 		},
 		"modelId": {
-			"type": "text",
+			"type": "autocompleteSendTo",
+			"command": "listModels",
+			"jsonData": "{\"provider\": \"${data.provider}\"}",
+			"alsoDependsOn": [
+				"provider"
+			],
+			"freeSolo": true,
 			"label": "Model",
+			"help": "Choose a model of the provider or type any model ID. Empty: the default model of the provider",
 			"xs": 12,
 			"sm": 6,
 			"md": 4,
 			"lg": 4,
-			"xl": 4,
-			"help": "Leave empty to use the default model of the provider"
+			"xl": 4
 		},
 		"apiKey": {
 			"type": "password",
