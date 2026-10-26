@@ -1,8 +1,21 @@
 {
 	"common": {
 		"name": "pi-agent",
-		"version": "0.0.3",
+		"version": "0.0.4",
 		"news": {
+			"0.0.4": {
+				"en": "Confirm writes with buttons in Telegram; reminders; history values; token use and cost; local time zone",
+				"de": "Schreibvorgänge per Schaltfläche in Telegram bestätigen; Erinnerungen; Verlaufswerte; Token-Verbrauch und Kosten; lokale Zeitzone",
+				"ru": "Подтверждение записи кнопками в Telegram; напоминания; значения из истории; расход токенов и стоимость; местный часовой пояс",
+				"pt": "Confirmar escritas com botões no Telegram; lembretes; valores do histórico; consumo de tokens e custo; fuso horário local",
+				"nl": "Schrijfacties bevestigen met knoppen in Telegram; herinneringen; geschiedeniswaarden; tokenverbruik en kosten; lokale tijdzone",
+				"fr": "Confirmer les écritures avec des boutons dans Telegram ; rappels ; valeurs d'historique ; consommation de jetons et coût ; fuseau horaire local",
+				"it": "Conferma delle scritture con pulsanti in Telegram; promemoria; valori della cronologia; consumo di token e costo; fuso orario locale",
+				"es": "Confirmar escrituras con botones en Telegram; recordatorios; valores del historial; consumo de tokens y coste; zona horaria local",
+				"pl": "Potwierdzanie zapisów przyciskami w Telegramie; przypomnienia; wartości z historii; zużycie tokenów i koszt; lokalna strefa czasowa",
+				"uk": "Підтвердження запису кнопками в Telegram; нагадування; значення з історії; витрата токенів і вартість; місцевий часовий пояс",
+				"zh-cn": "通过 Telegram 按钮确认写入；提醒；历史值；令牌用量和费用；本地时区"
+			},
 			"0.0.3": {
 				"en": "Conversations are stored in SQLite (less memory); Telegram chats no longer wait for each other; safer Telegram formatting",
 				"de": "Unterhaltungen werden in SQLite gespeichert (weniger Speicher); Telegram-Chats warten nicht mehr aufeinander; sicherere Telegram-Formatierung",
@@ -127,7 +140,10 @@
 		"dryRun": true,
 		"telegramInstance": "",
 		"telegramUsers": "",
-		"telegramPrefix": ""
+		"telegramPrefix": "",
+		"confirmRequired": "",
+		"historyInstance": "",
+		"timeZone": ""
 	},
 	"objects": [],
 	"instanceObjects": [

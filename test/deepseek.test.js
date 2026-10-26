@@ -84,7 +84,7 @@ test('DeepSeek: tool call reaches the ioBroker tool and the answer comes back', 
 		assert.equal(requests[0].headers.get('authorization'), 'Bearer test-key');
 		assert.equal(requests[0].body.model, 'deepseek-flash');
 		const toolNames = requests[0].body.tools.map(t => t.function.name).sort();
-		assert.deepEqual(toolNames, ['get_state', 'list_instances', 'search_objects', 'set_state']);
+		assert.deepEqual(toolNames, ['get_history', 'get_state', 'get_time', 'list_instances', 'remind_me', 'search_objects', 'set_state']);
 		// The second request carries the tool result back to the model.
 		const toolMsg = requests[1].body.messages.find(m => m.role === 'tool');
 		assert.equal(toolMsg.tool_call_id, 'call_1');

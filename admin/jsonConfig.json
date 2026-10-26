@@ -68,6 +68,18 @@
 			"xl": 12,
 			"maxRows": 12
 		},
+		"confirmRequired": {
+			"type": "text",
+			"label": "Confirmation required",
+			"help": "One regular expression per line. A write to a matching state (it must also be on the allowlist) happens only after the user confirms it with a button in Telegram.",
+			"minRows": 2,
+			"maxRows": 10,
+			"xs": 12,
+			"sm": 12,
+			"md": 12,
+			"lg": 12,
+			"xl": 12
+		},
 		"instructions": {
 			"type": "text",
 			"label": "Instructions",
@@ -79,6 +91,30 @@
 			"lg": 12,
 			"xl": 12,
 			"maxRows": 12
+		},
+		"historyInstance": {
+			"type": "instance",
+			"adapter": "_dataSources",
+			"allowDeactivate": true,
+			"label": "History instance",
+			"help": "Empty: the default history of the system settings",
+			"newLine": true,
+			"xs": 12,
+			"sm": 6,
+			"md": 4,
+			"lg": 4,
+			"xl": 4
+		},
+		"timeZone": {
+			"type": "text",
+			"label": "Time zone",
+			"help": "IANA name such as Europe/Berlin. Empty: the time zone of the ioBroker server",
+			"placeholder": "Europe/Berlin",
+			"xs": 12,
+			"sm": 6,
+			"md": 4,
+			"lg": 4,
+			"xl": 4
 		},
 		"telegramHeader": {
 			"type": "header",

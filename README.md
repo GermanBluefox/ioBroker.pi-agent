@@ -44,6 +44,9 @@ before it runs, so an interrupted request continues after the adapter starts aga
 | API key         | Stored encrypted.                                                                |
 | Dry run         | On by default. Write requests are logged and answered, but not executed.         |
 | Write allowlist | One regular expression per line. Empty means the agent cannot write anything.   |
+| Confirmation required | One regular expression per line. A write to a matching state is done only after the user confirms it with a button in Telegram. |
+| Time zone       | IANA name such as `Europe/Berlin` for reminders, `get_time` and history times. Empty: the time zone of the ioBroker server. |
+| History instance | `history`, `sql` or `influxdb` instance for `get_history`. Empty: the default history of the system settings. |
 | Instructions    | Text appended to the system prompt, for example room names and house rules.     |
 | Telegram instance | A `telegram` instance whose bot talks to the agent. Empty: Telegram is not used. |
 | Prefix          | Only messages that start with it go to the agent, e.g. `/ai`. Empty: every message of an allowed user. |
@@ -74,6 +77,19 @@ middle, they continue on the next start. The answer of a request from `chat.inpu
 `chat.answer` (the `sendTo` caller is no longer waiting), the answer of a Telegram request goes to its chat. A
 `sendTo` caller that was interrupted gets `{ error: "Interrupted by shutdown; the request continues after the next start" }`.
 
+### Confirmation, reminders, history, usage
+
+- **Confirmation:** a write to a state on the "Confirmation required" list is asked in the Telegram chat of the
+  conversation with ✅/❌ buttons. Only "Yes" lets it happen; "No", no answer, or a request that did not come from
+  Telegram blocks it. The answer is stored with the call, so a restart does not ask twice. In dry run nothing is
+  written, so nothing is asked.
+- **Reminders:** `remind_me` sends a message later (at most 7 days ahead) to the chat of the conversation, or to
+  `chat.answer`. The reminder waits in the conversation store and survives restarts.
+- **History:** `get_history` reads past values (up to 31 days, averaged to at most 200 values) from the history
+  instance.
+- **Usage:** `pi-agent.0.usage.*` shows input, output and total tokens and the cost in USD over all conversations
+  (the cost needs prices in the model catalog; it can stay 0 for a provider without them), `usage.json` per model.
+
 ### Telegram
 
 Select a `telegram` instance, enter the allowed users and, if the bot also serves other scripts, a prefix such as
@@ -103,6 +119,14 @@ Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Avai
   Earlier history is not carried over, and the Telegram chats start new conversations.
 
 ## Changelog
+
+### 0.0.4 (2026-10-26)
+
+- Writes can require a confirmation with buttons in Telegram ("Confirmation required")
+- New tool `remind_me`: reminders that survive restarts
+- New tool `get_history`: past values from the history, sql or influxdb instance
+- Token use and cost in `usage.*`
+- Time zone setting: `remind_me` reads local times ("18:00", "27.10. 18:00"), answers and history are in local time, new tool `get_time`
 
 ### 0.0.3 (2026-10-26)
 

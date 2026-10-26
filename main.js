@@ -7,6 +7,7 @@ const { createIoBrokerExtension } = require('./lib/tools');
 const { createModelsWithKey } = require('./lib/providers');
 const { ensureObjects } = require('./lib/objects');
 const { openStore } = require('./lib/store');
+const { resolveTimeZone } = require('./lib/time');
 const {
     parseAllowedUsers,
     isAllowedUser,
@@ -16,6 +17,7 @@ const {
     splitMessage,
     markdownToTelegramHtml,
     isWellFormedHtml,
+    escapeHtml,
     TELEGRAM_INSTRUCTIONS,
 } = require('./lib/telegram');
 
@@ -64,6 +66,10 @@ class PiAgent extends utils.Adapter {
         this.context = null;
         this.model = null;
         this.allowlist = [];
+        /** IANA time zone of the house (setting, else the server's). */
+        this.timeZone = 'UTC';
+        /** States whose write the user must confirm in Telegram first. */
+        this.confirmList = [];
         /** Telegram instance ("telegram.0") or "" when the Telegram link is off. */
         this.telegram = '';
         this.allowedUsers = new Set();
@@ -88,6 +94,11 @@ class PiAgent extends utils.Adapter {
             await ensureObjects(this);
             this.allowlist = parseAllowlist(this.config.writeAllow, (line, msg) =>
                 this.log.warn(`Ignoring invalid allowlist line "${line}": ${msg}`),
+            );
+            this.timeZone = resolveTimeZone(this.config.timeZone, this.log);
+            this.log.info(`Time zone: ${this.timeZone}`);
+            this.confirmList = parseAllowlist(this.config.confirmRequired, (line, msg) =>
+                this.log.warn(`Ignoring invalid confirmation line "${line}": ${msg}`),
             );
             if (this.allowlist.length === 0) {
                 this.log.warn('The write allowlist is empty: the agent can read but not write anything.');
@@ -136,8 +147,13 @@ class PiAgent extends utils.Adapter {
         registry.install(
             createIoBrokerExtension(this, { ...durable, Type: ai.Type }, () => ({
                 allowlist: this.allowlist,
+                confirmList: this.confirmList,
+                timeZone: this.timeZone,
                 dryRun: Boolean(this.config.dryRun),
                 instructions: String(this.config.instructions || ''),
+                requestConfirmation: request => this.requestConfirmation(request),
+                deliverReminder: (conversationId, text) => this.deliverReminder(conversationId, text),
+                historyInstance: () => this.historyInstance(),
             })),
         );
 
@@ -162,6 +178,7 @@ class PiAgent extends utils.Adapter {
         this.root = await this.harness.root(this.context, { agent: { model: this.model } });
         await this.root.configure({ model: this.model }, this.context); // the model may have changed since the last start
         this.harness.resume();
+        await this.updateUsage();
         this.log.info(`Agent ready (${this.model.provider}/${this.model.modelId})`);
     }
 
@@ -224,6 +241,98 @@ class PiAgent extends utils.Adapter {
         return created;
     }
 
+    /**
+     * Telegram chat of a conversation, if the conversation belongs to one.
+     *
+     * @param {unknown} conversationId conversation id
+     * @returns {string | undefined} chat id
+     */
+    chatOf(conversationId) {
+        return Object.keys(this.chats).find(chatId => String(this.chats[chatId]) === String(conversationId));
+    }
+
+    /**
+     * Ask the user in the Telegram chat of the conversation whether a write may happen.
+     *
+     * @param {{ conversationId: unknown, id: string, val: unknown }} request the write to confirm
+     * @returns {Promise<string>} "yes", "no", "timeout" or "unavailable" (no Telegram chat for this conversation)
+     */
+    async requestConfirmation({ conversationId, id, val }) {
+        const chatId = this.chatOf(conversationId);
+        if (!this.telegram || !chatId) {
+            this.log.warn(`Confirmation for ${id} needed, but the request did not come from a Telegram chat`);
+            return 'unavailable';
+        }
+        const question = `⚠️ Set <code>${escapeHtml(id)}</code> to <code>${escapeHtml(JSON.stringify(val))}</code>?`;
+        try {
+            const answer = await this.sendToAsync(
+                this.telegram,
+                'ask',
+                {
+                    text: question,
+                    chatId,
+                    parse_mode: 'HTML',
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: '✅ Yes', callback_data: 'pi-agent:yes' },
+                                { text: '❌ No', callback_data: 'pi-agent:no' },
+                            ],
+                        ],
+                    },
+                },
+                { timeout: 10 * 60_000 },
+            );
+            if (String(answer) === '__timeout__') {
+                return 'timeout';
+            }
+            // the telegram adapter answers with the pressed button (a callback query with "data")
+            return Object(answer).data === 'pi-agent:yes' ? 'yes' : 'no';
+        } catch (e) {
+            this.log.warn(`No answer to the confirmation for ${id}: ${e.message}`);
+            return 'timeout';
+        }
+    }
+
+    /**
+     * A reminder is due: send it to the Telegram chat of its conversation, or to chat.answer.
+     *
+     * @param {unknown} conversationId conversation that set the reminder
+     * @param {string} text reminder text
+     */
+    async deliverReminder(conversationId, text) {
+        const chatId = this.chatOf(conversationId);
+        const target = this.telegram && chatId ? { kind: 'telegram', chatId } : { kind: 'state' };
+        this.log.info(`Reminder due${chatId ? ` for chat ${chatId}` : ''}`);
+        await this.deliver(target, `⏰ ${text}`);
+    }
+
+    /** @returns {Promise<string>} configured history instance, else the system default, else "" */
+    async historyInstance() {
+        const configured = String(this.config.historyInstance || '').trim();
+        if (configured) {
+            return configured;
+        }
+        const system = await this.getForeignObjectAsync('system.config');
+        return String(system?.common?.defaultHistory || '');
+    }
+
+    /** Publish the token use and cost of all conversations in usage.*. */
+    async updateUsage() {
+        try {
+            const state = await this.harness.usage(this.context);
+            const all = [...Object.values(state.models || {}), ...Object.values(state.tools || {})];
+            const sum = pick => all.reduce((total, usage) => total + (Number(pick(usage)) || 0), 0);
+            await this.setStateAsync('usage.tokensInput', { val: sum(u => u.input), ack: true });
+            await this.setStateAsync('usage.tokensOutput', { val: sum(u => u.output), ack: true });
+            await this.setStateAsync('usage.tokensTotal', { val: sum(u => u.totalTokens), ack: true });
+            await this.setStateAsync('usage.cost', { val: Math.round(sum(u => u.cost?.total) * 1e6) / 1e6, ack: true });
+            await this.setStateAsync('usage.json', { val: JSON.stringify(state), ack: true });
+        } catch (e) {
+            this.log.warn(`Usage could not be published: ${e.message}`);
+        }
+    }
+
     /** Write the pending list; writes are chained so the newest list always wins. */
     savePending() {
         this.pendingWrite = this.pendingWrite
@@ -270,6 +379,7 @@ class PiAgent extends utils.Adapter {
                 }
                 const answer = await this.lastAnswer(conversation);
                 await this.removePending(requestId);
+                void this.updateUsage();
                 return answer;
             } catch (e) {
                 if (!this.stopping) {

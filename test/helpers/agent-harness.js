@@ -99,6 +99,11 @@ function fakeAdapterCore(hooks) {
         sendTo(...args) {
             this.sent.push(args);
         }
+        // Messages that wait for an answer (telegram "ask", history "getHistory") go through the hook.
+        async sendToAsync(instance, command, message) {
+            this.asked = [...(this.asked || []), [instance, command, message]];
+            return hooks.sendToAsync ? hooks.sendToAsync(instance, command, message) : undefined;
+        }
     }
     return { Adapter, getAbsoluteInstanceDataDir: adapter => adapter.dataDir };
 }

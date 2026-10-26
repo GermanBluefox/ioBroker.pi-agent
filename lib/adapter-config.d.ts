@@ -11,6 +11,9 @@ declare global {
             telegramInstance: string;
             telegramUsers: string;
             telegramPrefix: string;
+            confirmRequired: string;
+            historyInstance: string;
+            timeZone: string;
         }
     }
 }
