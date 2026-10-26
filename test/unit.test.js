@@ -89,7 +89,7 @@ test('jsonConfig: every label, help and header text has a translation key', () =
     const config = require('../admin/jsonConfig.json');
     const en = require('../admin/i18n/en.json');
     for (const [key, item] of Object.entries(config.items)) {
-        for (const field of ['label', 'help', 'text']) {
+        for (const field of ['label', 'help', 'text', 'placeholder']) {
             if (item[field]) {
                 assert.ok(item[field] in en, `${key}.${field} "${item[field]}" has no translation`);
             }

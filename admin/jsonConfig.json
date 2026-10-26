@@ -115,7 +115,6 @@
 			"type": "text",
 			"label": "Time zone",
 			"help": "IANA name such as Europe/Berlin. Empty: the time zone of the ioBroker server",
-			"placeholder": "Europe/Berlin",
 			"xs": 12,
 			"sm": 6,
 			"md": 4,
