@@ -14,20 +14,20 @@ const { CRASH_SEED } = require('./helpers/crash-fixture');
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'pi-agent-tg-'));
 const faux = () => import('@earendil-works/pi-ai/providers/faux');
 const TG = 'telegram.0';
-const CONFIG = { telegramInstance: TG, telegramUsers: '1\n@bob', telegramPrefix: '/ai' };
+const CONFIG = { messengers: [{ enabled: true, instance: TG, users: '1, @bob', prefix: '/ai' }] };
 const USERS = JSON.stringify({ 1: { firstName: 'Alex', userName: 'alex' }, 2: { firstName: 'Bob', userName: 'bob' } });
 
-/** Let the stand-in telegram.0 receive a message, like the telegram adapter writes it. */
-async function receive(agent, db, { chatId, userId, messageId, name, text }) {
+/** Let a stand-in telegram instance receive a message, like the telegram adapter writes it. */
+async function receive(agent, db, { chatId, userId, messageId, name, text }, instance = TG) {
     const ts = Date.now();
-    db.setState(`${TG}.communicate.requestChatId`, { val: chatId, ack: true, ts });
-    db.setState(`${TG}.communicate.requestUserId`, { val: userId, ack: true, ts });
-    db.setState(`${TG}.communicate.requestMessageId`, { val: messageId, ack: true, ts });
-    db.setState(`${TG}.communicate.users`, { val: USERS, ack: true, ts });
-    await agent.onStateChange(`${TG}.communicate.request`, { val: `[${name}]${text}`, ack: true, ts });
+    db.setState(`${instance}.communicate.requestChatId`, { val: chatId, ack: true, ts });
+    db.setState(`${instance}.communicate.requestUserId`, { val: userId, ack: true, ts });
+    db.setState(`${instance}.communicate.requestMessageId`, { val: messageId, ack: true, ts });
+    db.setState(`${instance}.communicate.users`, { val: USERS, ack: true, ts });
+    await agent.onStateChange(`${instance}.communicate.request`, { val: `[${name}]${text}`, ack: true, ts });
 }
 
-const sentToTelegram = agent => agent.sent.filter(([to]) => to === TG).map(([, , msg]) => msg);
+const sentToTelegram = (agent, instance = TG) => agent.sent.filter(([to]) => to === instance).map(([, , msg]) => msg);
 
 test('only allowed users with the prefix reach the agent; each chat has its own conversation', async () => {
     const f = await faux();
@@ -58,8 +58,8 @@ test('only allowed users with the prefix reach the agent; each chat has its own 
         { text: 'Hello Bob', chatId: '200', parse_mode: 'HTML' },
     ]);
     const chats = JSON.parse(db.states[`${NAMESPACE}.telegram.chats`].val);
-    assert.deepEqual(Object.keys(chats).sort(), ['100', '200']);
-    assert.notEqual(chats['100'], chats['200'], 'two chats, two conversations');
+    assert.deepEqual(Object.keys(chats).sort(), [`${TG}/100`, `${TG}/200`]);
+    assert.notEqual(chats[`${TG}/100`], chats[`${TG}/200`], 'two chats, two conversations');
     assert.match(seen[1], /I am Bob/);
     assert.doesNotMatch(seen[1], /I am Alex/, "Bob's conversation does not see Alex's messages");
     assert.match(seen[0], /This conversation is a Telegram chat/, 'chats get the Telegram instructions');
@@ -71,7 +71,7 @@ test('the first name from the telegram user list is accepted, like in other adap
     const f = await faux();
     const { agent, db } = await startAgent({
         dataDir: tmp(),
-        config: { ...CONFIG, telegramUsers: 'Alex' },
+        config: { messengers: [{ ...CONFIG.messengers[0], users: 'Alex' }] },
         responses: [f.fauxAssistantMessage('Hi Alex')],
     });
     await receive(agent, db, { chatId: 100, userId: 1, messageId: 11, name: 'Alex', text: '/ai hi' });
@@ -207,5 +207,101 @@ test('an answer that would give broken HTML goes out as plain text, with a warni
     await receive(agent, db, { chatId: 100, userId: 1, messageId: 41, name: 'Alex', text: '/ai format' });
     assert.deepEqual(sentToTelegram(agent), [{ text: '**fett *kursiv** text*', chatId: '100' }]);
     assert.ok(agent.logs.some(([lvl, m]) => lvl === 'warn' && m.includes('sent as plain text')));
+    await stopAgent(agent);
+});
+
+test('two Telegram instances: each has its users and prefix, answers go back through the bot they came from', async () => {
+    const f = await faux();
+    const TG2 = 'telegram.1';
+    const { agent, db } = await startAgent({
+        dataDir: tmp(),
+        config: {
+            messengers: [
+                ...CONFIG.messengers,
+                { enabled: true, instance: TG2, users: '2', prefix: '' },
+                { enabled: false, instance: 'telegram.2', users: '1', prefix: '' },
+            ],
+        },
+        responses: [f.fauxAssistantMessage('via bot 0'), f.fauxAssistantMessage('via bot 1')],
+    });
+    assert.deepEqual(agent.foreignSubscriptions, [`${TG}.communicate.request`, `${TG2}.communicate.request`]);
+
+    // Alex is allowed on telegram.0 only; on telegram.1 no prefix is needed
+    await receive(agent, db, { chatId: 100, userId: 1, messageId: 5, name: 'Alex', text: 'hi' }, TG2);
+    await receive(agent, db, { chatId: 100, userId: 1, messageId: 5, name: 'Alex', text: '/ai hi' });
+    await receive(agent, db, { chatId: 100, userId: 2, messageId: 5, name: 'Bob', text: 'hi' }, TG2);
+    assert.deepEqual(sentToTelegram(agent), [{ text: 'via bot 0', chatId: '100', parse_mode: 'HTML' }]);
+    assert.deepEqual(sentToTelegram(agent, TG2), [{ text: 'via bot 1', chatId: '100', parse_mode: 'HTML' }]);
+
+    // same chat id and message id on both bots: two requests, two conversations
+    const chats = JSON.parse(db.states[`${NAMESPACE}.telegram.chats`].val);
+    assert.deepEqual(Object.keys(chats).sort(), [`${TG}/100`, `${TG2}/100`]);
+    assert.notEqual(chats[`${TG}/100`], chats[`${TG2}/100`]);
+    await stopAgent(agent);
+});
+
+test('settings of 0.0.5 (one instance in single fields) move into the table and the instance restarts', async () => {
+    const id = `system.adapter.${NAMESPACE}`;
+    const legacy = { telegramInstance: TG, telegramUsers: '1\n@bob', telegramPrefix: '/ai' };
+    const { agent, db } = await startAgent({
+        dataDir: tmp(),
+        config: legacy,
+        seed: { objects: { [id]: { type: 'instance', common: {}, native: { ...legacy, apiKey: 'x' } } } },
+        responses: [],
+    });
+    assert.deepEqual(db.objects[id].native, {
+        apiKey: 'x',
+        messengers: [{ enabled: true, instance: TG, users: '1\n@bob', prefix: '/ai' }],
+        telegramInstance: '',
+        telegramUsers: '',
+        telegramPrefix: '',
+    });
+    assert.equal(agent.harness, null, 'the agent waits for the restart');
+    await stopAgent(agent);
+});
+
+test('chats and pending requests of 0.0.5 (keys without instance) belong to the first instance', async () => {
+    const f = await faux();
+    const dataDir = tmp();
+    // a first run creates the conversation of chat 100
+    const first = await startAgent({ dataDir, config: CONFIG, responses: [f.fauxAssistantMessage('first')] });
+    await receive(first.agent, first.db, { chatId: 100, userId: 1, messageId: 1, name: 'Alex', text: '/ai hi' });
+    await stopAgent(first.agent);
+    // ... then the stored data is turned back into the format of 0.0.5
+    const db = first.db;
+    const conversation = JSON.parse(db.states[`${NAMESPACE}.telegram.chats`].val)[`${TG}/100`];
+    db.setState(`${NAMESPACE}.telegram.chats`, { val: JSON.stringify({ 100: conversation }), ack: true });
+    const pending = [{ requestId: 'tg-100-2', content: 'still there?', target: { kind: 'telegram', chatId: '100' } }];
+    db.setState(`${NAMESPACE}.chat.pending`, { val: JSON.stringify(pending), ack: true });
+
+    const second = await startAgent({ dataDir, config: CONFIG, responses: [f.fauxAssistantMessage('yes')] });
+    await waitFor(() => second.db.states[`${NAMESPACE}.chat.pending`].val === '', 'the resumed request to finish');
+    assert.deepEqual(JSON.parse(second.db.states[`${NAMESPACE}.telegram.chats`].val), { [`${TG}/100`]: conversation });
+    assert.deepEqual(sentToTelegram(second.agent), [{ text: 'yes', chatId: '100', parse_mode: 'HTML' }]);
+    await stopAgent(second.agent);
+});
+
+test('sendTo "listMessengerInstances" lists the installed telegram and max instances for the table', async () => {
+    const { agent } = await startAgent({
+        dataDir: tmp(),
+        seed: {
+            objects: {
+                'system.adapter.telegram.0': { type: 'instance', common: { title: 'Telegram' } },
+                'system.adapter.telegram.1': { type: 'instance', common: {} },
+                'system.adapter.telegramm.0': { type: 'instance', common: {} },
+                'system.adapter.max.0': { type: 'instance', common: { titleLang: { en: 'MAX Messenger Bot' } } },
+            },
+        },
+        responses: [],
+    });
+    const answer = await new Promise(resolve => {
+        agent.sendTo = (to, command, options) => resolve(options);
+        agent.onMessage({ command: 'listMessengerInstances', from: 'system.adapter.admin.0', callback: {} });
+    });
+    assert.deepEqual(answer, [
+        { value: 'telegram.0', label: 'telegram.0 (Telegram)' },
+        { value: 'telegram.1', label: 'telegram.1' },
+        { value: 'max.0', label: 'max.0 (MAX Messenger Bot)' },
+    ]);
     await stopAgent(agent);
 });

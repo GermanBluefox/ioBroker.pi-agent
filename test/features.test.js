@@ -14,7 +14,7 @@ const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'pi-agent-feat-'));
 const faux = () => import('@earendil-works/pi-ai/providers/faux');
 const TG = 'telegram.0';
 const USERS = JSON.stringify({ 1: { firstName: 'Alex', userName: 'alex' } });
-const TELEGRAM = { telegramInstance: TG, telegramUsers: '1', telegramPrefix: '' };
+const TELEGRAM = { messengers: [{ enabled: true, instance: TG, users: '1', prefix: '' }] };
 const WRITE = { writeAllow: '^x\\.0\\.', confirmRequired: '^x\\.0\\.', dryRun: false };
 
 async function receive(agent, db, messageId, text) {
@@ -234,5 +234,64 @@ test('time zone: get_time, remind_me and get_history speak the local time of the
 test('time zone: a wrong name is reported and the server zone is used', async () => {
     const { agent } = await startAgent({ dataDir: tmp(), config: { timeZone: 'Berlin' }, responses: [] });
     assert.ok(agent.logs.some(([lvl, m]) => lvl === 'warn' && m.includes('Unknown time zone "Berlin"')));
+    await stopAgent(agent);
+});
+
+test('the table "Write permissions" allows and asks like the regular expressions', async () => {
+    const f = await faux();
+    const { agent, db } = await startAgent({
+        dataDir: tmp(),
+        config: {
+            ...TELEGRAM,
+            dryRun: false,
+            writeRules: [
+                { scope: 'x.0', write: true, confirm: true },
+                { scope: 'y.0', write: false, confirm: false },
+            ],
+        },
+        seed: CRASH_SEED,
+        responses: [switchLamp(f), f.fauxAssistantMessage('Lamp is on.')],
+        hooks: { sendToAsync: (to, command) => (command === 'ask' ? { data: 'pi-agent:yes' } : undefined) },
+    });
+    await receive(agent, db, 1, 'switch the lamp on');
+    assert.equal(agent.asked.length, 1, 'asked because of "confirm"');
+    assert.deepEqual(db.writes, [['x.0.lamp', true]]);
+    await stopAgent(agent);
+});
+
+test('sendTo "importInstances" adds a row for every installed instance that has none', async () => {
+    const instance = (type, title) => ({ type: 'instance', common: { type, title } });
+    const { agent } = await startAgent({
+        dataDir: tmp(),
+        seed: {
+            objects: {
+                'system.adapter.admin.0': instance('general'),
+                'system.adapter.history.0': instance('storage'),
+                'system.adapter.hm-rpc.0': instance('hardware'),
+                'system.adapter.javascript.0': instance('logic'),
+                'system.adapter.pi-agent.0': instance('logic'),
+                'system.adapter.shelly.0': instance('hardware'),
+            },
+        },
+        responses: [],
+    });
+    const answer = await new Promise(resolve => {
+        agent.sendTo = (to, command, message) => resolve(message);
+        agent.onMessage({
+            command: 'importInstances',
+            message: { writeRules: [{ scope: 'shelly.0', write: true, confirm: false }] },
+            from: 'system.adapter.admin.0',
+            callback: {},
+        });
+    });
+    assert.deepEqual(answer, {
+        native: {
+            writeRules: [
+                { scope: 'shelly.0', write: true, confirm: false },
+                { scope: 'hm-rpc.0', write: false, confirm: false },
+                { scope: 'javascript.0', write: false, confirm: false },
+            ],
+        },
+    });
     await stopAgent(agent);
 });

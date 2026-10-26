@@ -59,7 +59,7 @@ test('prefix: a word prefix does not catch longer words, but allows punctuation 
 });
 
 test('request id is stable per chat and message', () => {
-    assert.equal(telegramRequestId(753441, 12), 'tg-753441-12');
+    assert.equal(telegramRequestId('telegram.0', 753441, 12), 'tg-telegram.0-753441-12');
 });
 
 test('long answers are split into Telegram-sized parts, preferring line breaks', () => {
@@ -97,4 +97,41 @@ test('HTML check: overlapping tags from Markdown are detected, normal answers pa
 
 test('a quote in a link URL cannot break the href attribute', () => {
     assert.equal(markdownToTelegramHtml('[a](https://x.de/?q="1")'), '<a href="https://x.de/?q=&quot;1&quot;">a</a>');
+});
+
+const { channelsFromConfig, chatKey, parseChatKey, migrateChats } = require('../lib/channels');
+
+test('allowed users can also be separated by commas (one table cell)', () => {
+    const allowed = parseAllowedUsers('753441, @Alex1808; Bob');
+    assert.deepEqual([...allowed].sort(), ['753441', 'alex1808', 'bob']);
+});
+
+test('channels: table rows, disabled and duplicate rows skipped, single fields of 0.0.5 as fallback', () => {
+    const table = channelsFromConfig({
+        messengers: [
+            { enabled: true, instance: ' telegram.0 ', users: '1, 2', prefix: ' /ai ' },
+            { enabled: false, instance: 'telegram.1', users: '1', prefix: '' },
+            { enabled: true, instance: 'telegram.0', users: '3', prefix: '' },
+            { enabled: true, instance: '', users: '3', prefix: '' },
+        ],
+        telegramInstance: 'telegram.9',
+    });
+    assert.deepEqual(
+        table.map(c => [c.instance, [...c.allowed], c.prefix]),
+        [['telegram.0', ['1', '2'], '/ai']],
+    );
+    const legacy = channelsFromConfig({ messengers: [], telegramInstance: 'telegram.0', telegramUsers: '1\n2' });
+    assert.deepEqual(legacy.map(c => [c.instance, [...c.allowed], c.prefix]), [['telegram.0', ['1', '2'], '']]);
+    assert.deepEqual(channelsFromConfig({}), []);
+});
+
+test('chat keys carry the instance; keys of 0.0.5 belong to the first instance', () => {
+    assert.equal(chatKey('telegram.0', 100), 'telegram.0/100');
+    assert.deepEqual(parseChatKey('telegram.1/-100', 'telegram.0'), { instance: 'telegram.1', chatId: '-100' });
+    assert.deepEqual(parseChatKey('100', 'telegram.0'), { instance: 'telegram.0', chatId: '100' });
+    assert.deepEqual(migrateChats({ 100: 'a', 'telegram.1/5': 'b' }, 'telegram.0'), {
+        chats: { 'telegram.0/100': 'a', 'telegram.1/5': 'b' },
+        changed: true,
+    });
+    assert.equal(migrateChats({ 'telegram.0/100': 'a' }, 'telegram.0').changed, false);
 });

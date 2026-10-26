@@ -24,7 +24,7 @@ before it runs, so an interrupted request continues after the adapter starts aga
 - Logs every tool call as one line: `Tool <name> <arguments> -> <outcome>` (blocked writes as a warning).
 - Writes states through `set_state`. This tool is **never repeated** after an interruption: the model is told that the
   call was interrupted and checks the actual value first. A light cannot be switched twice by a restart.
-- Writes only to states on the **write allowlist**. Everything else is blocked before it runs.
+- Writes only to states the **write permissions** allow. Everything else is blocked before it runs.
 - Answers each request exactly once. The request id is derived from the triggering state, so a repeated trigger finds the
   original request.
 
@@ -38,28 +38,39 @@ before it runs, so an interrupted request continues after the adapter starts aga
 
 ## Configuration
 
+The settings have three tabs: **General**, **Write permissions** and **Messengers**.
+
 | Setting         | Meaning                                                                          |
 | --------------- | -------------------------------------------------------------------------------- |
 | Provider, Model | The language model. The model field lists the models of the chosen provider (the instance must be running for the list); any other model ID can be typed in. Empty: the default of the provider (`claude-sonnet-5-5`, `gpt-6-sol`, `deepseek-flash`). |
 | API key         | Stored encrypted.                                                                |
-| Dry run         | On by default. Write requests are logged and answered, but not executed.         |
-| Write allowlist | One regular expression per line. Empty means the agent cannot write anything.   |
-| Confirmation required | One regular expression per line. A write to a matching state is done only after the user confirms it with a button in Telegram. |
+| Simulation mode (nothing is switched) | On by default. The agent says what it would switch, but no state is written. |
+| Write permissions | Table, one row per scope: an instance or object ID (`hm-rpc.0` covers everything below it) or a pattern with `*` (`hm-rpc.0.*.STATE`), with the checkboxes "Write allowed" and "Confirmation required". **Add installed instances** adds a row for every installed instance that has none, with nothing allowed yet. States that match no row can only be read. |
+| Write allowlist, Confirmation required | Under "Advanced": regular expressions, one per line, in addition to the table (the settings of 0.0.5 and earlier keep working). |
 | Time zone       | IANA name such as `Europe/Berlin` for reminders, `get_time` and history times. Empty: the time zone of the ioBroker server. |
 | History instance | `history`, `sql` or `influxdb` instance for `get_history`. Empty: the default history of the system settings. |
 | Instructions    | Text appended to the system prompt, for example room names and house rules.     |
-| Telegram instance | A `telegram` instance whose bot talks to the agent. Empty: Telegram is not used. |
-| Prefix          | Only messages that start with it go to the agent, e.g. `/ai`. Empty: every message of an allowed user. |
-| Allowed Telegram users | Telegram user ID, user name or first name (as in the telegram adapter), one per line. Messages from anyone else are ignored. |
+| Messengers      | Table, one row per `telegram` or `max` instance (bot): active, instance, allowed users, prefix. No row: no messenger is used. |
+| ↳ Allowed users | User ID, user name or first name (as in the messenger adapter), separated by commas. Messages from anyone else are ignored. |
+| ↳ Prefix        | Only messages that start with it go to the agent, e.g. `/ai`. Empty: every message of an allowed user. |
 
-Example allowlist:
+Example of the table "Write permissions":
+
+| Scope                  | Write allowed | Confirmation required |
+| ---------------------- | ------------- | --------------------- |
+| `hm-rpc.0.Wohnzimmer`  | ✓             |                       |
+| `zigbee.0.*.lock`      | ✓             | ✓                     |
+| `javascript.0.agent`   | ✓             |                       |
+
+The same as regular expressions under "Advanced":
 
 ```
 ^hm-rpc\.0\.Wohnzimmer\.
+^zigbee\.0\..*\.lock$
 ^javascript\.0\.agent\.
 ```
 
-Start with dry run on, watch the log, and only then switch it off.
+Start with simulation mode on, watch the log, and only then switch it off.
 
 ## Usage
 
@@ -74,14 +85,14 @@ written to `chat.answer`.
 
 `pi-agent.0.chat.pending` lists the requests that were accepted but not answered yet. If the adapter stops in the
 middle, they continue on the next start. The answer of a request from `chat.input` or `sendTo` is then written to
-`chat.answer` (the `sendTo` caller is no longer waiting), the answer of a Telegram request goes to its chat. A
+`chat.answer` (the `sendTo` caller is no longer waiting), the answer of a messenger request goes to its chat. A
 `sendTo` caller that was interrupted gets `{ error: "Interrupted by shutdown; the request continues after the next start" }`.
 
 ### Confirmation, reminders, history, usage
 
-- **Confirmation:** a write to a state on the "Confirmation required" list is asked in the Telegram chat of the
-  conversation with ✅/❌ buttons. Only "Yes" lets it happen; "No", no answer, or a request that did not come from
-  Telegram blocks it. The answer is stored with the call, so a restart does not ask twice. In dry run nothing is
+- **Confirmation:** a write to a state on the "Confirmation required" list is asked in the messenger chat of the
+  conversation with ✅/❌ buttons. Only "Yes" lets it happen; "No", no answer (10 minutes), or a request that did not
+  come from a messenger blocks it. The answer is stored with the call, so a restart does not ask twice. In simulation mode nothing is
   written, so nothing is asked.
 - **Reminders:** `remind_me` sends a message later (at most 7 days ahead) to the chat of the conversation, or to
   `chat.answer`. The reminder waits in the conversation store and survives restarts.
@@ -90,18 +101,28 @@ middle, they continue on the next start. The answer of a request from `chat.inpu
 - **Usage:** `pi-agent.0.usage.*` shows input, output and total tokens and the cost in USD over all conversations
   (the cost needs prices in the model catalog; it can stay 0 for a provider without them), `usage.json` per model.
 
-### Telegram
+### Messengers: Telegram and MAX
 
-Select a `telegram` instance, enter the allowed users and, if the bot also serves other scripts, a prefix such as
-`/ai`. Then write to the bot: `/ai Is the living room light on?`
+Add a row to the table "Messengers" with **+**, select a `telegram` or `max` instance, enter the allowed users and,
+if the bot also serves other scripts, a prefix such as `/ai`. Then write to the bot: `/ai Is the living room light on?`
+Messenger adapters that can only send (e.g. WhatsApp, Signal, Pushover) cannot be used for a chat.
 
-- Every chat has its own conversation with its own history; `pi-agent.0.telegram.chats` maps chat ids to them.
+- Several bots can talk to the agent, each with its own users and prefix. Answers, confirmations and reminders go back
+  through the bot the request came from.
+- Every chat has its own conversation with its own history; `pi-agent.0.telegram.chats` maps `<instance>/<chat id>`
+  to them.
+- Settings of 0.0.5 and earlier (one instance in single fields) are moved into the table at the first start, which
+  restarts the instance once. Existing chats keep their conversation.
 - Messages from users who are not on the list are ignored and logged as a warning. An empty list allows nobody.
-- A first name such as `Alex` counts only for users the telegram adapter knows (authenticated there), because anybody
-  can choose any first name in Telegram. Two known users with the same first name are both allowed; use the user name
+- A first name such as `Alex` counts only for users the messenger adapter knows (authenticated in the telegram
+  adapter, `max.0.users.<id>` in the max adapter), because anybody can choose any first name. Two known users with the same first name are both allowed; use the user name
   or the ID to tell them apart.
-- A message that the telegram adapter delivers twice is answered once.
+- A message that the messenger adapter delivers twice is answered once.
 - Long answers are split into several messages.
+- **Telegram:** Markdown of the model is sent as Telegram HTML (bold, italic, code, links).
+- **MAX** (adapter `max` 0.1.12 or newer): answers are plain text. In a private dialog the answer goes to the user, in
+  a group to the group. MAX has no "ask", so a confirmation sends callback buttons; the pressed button comes back as
+  `communicate.request`, is answered with `answerCallback` and never reaches the model.
 
 ### DeepSeek
 
@@ -110,15 +131,29 @@ Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Avai
 
 ## Security
 
-- The model decides which tools to call. The allowlist and the dry run are your protection, not the prompt.
+- The model decides which tools to call. The write permissions and the simulation mode are your protection, not the prompt.
 - The text of your requests and the values the agent reads are sent to the provider. Do not give it access to states
   that contain secrets.
 - The conversations are stored unencrypted in the instance data directory (`session.sqlite`, SQLite built into
   Node.js). An installation that still has the JSONL store of version 0.0.1/0.0.2 (folder `session`) switches to
   SQLite at the first start without pending requests; the old folder is renamed to `session.jsonl-<date>` and kept.
-  Earlier history is not carried over, and the Telegram chats start new conversations.
+  Earlier history is not carried over, and the messenger chats start new conversations.
 
 ## Changelog
+
+<!--
+    Placeholder for the next version (at the beginning of the line):
+    ### **WORK IN PROGRESS**
+-->
+
+### 0.1.0 (2026-10-26)
+
+- Messengers: a table with one row per bot (active, instance, allowed users, prefix), for several Telegram instances and the MAX messenger (adapter `max`); the Telegram settings of 0.0.5 are moved into it at the first start
+- Confirmations and reminders go back through the bot the request came from
+- Allowed users can be separated by commas
+- Write permissions: a table of scopes (instance, object ID or pattern with `*`) with the checkboxes "Write allowed" and "Confirmation required", and a button that adds the installed instances; the regular expressions stay under "Advanced"
+- The settings have three tabs: General, Write permissions, Messengers
+- "Dry run" is now called "Simulation mode (nothing is switched)"
 
 ### 0.0.5 (2026-10-26)
 
@@ -145,12 +180,7 @@ Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Avai
   tables as a monospace block), and Telegram chats are asked for short answers without tables
 - Released through the CI workflow with npm provenance (trusted publishing)
 
-### 0.0.1 (2026-10-25)
-
-- Initial version: durable agent with the tools `search_objects`, `get_state`, `list_instances` and `set_state`
-- Write allowlist and dry run; an interrupted write is never repeated; requests continue after a restart
-- Telegram: talk to the agent through a telegram instance, with allowed users, prefix and one conversation per chat
-- Providers: Anthropic, OpenAI, DeepSeek; every tool call is logged
+Older changelog entries can be found in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 
 ## License
 

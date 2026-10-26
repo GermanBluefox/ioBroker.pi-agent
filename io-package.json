@@ -1,8 +1,21 @@
 {
 	"common": {
 		"name": "pi-agent",
-		"version": "0.0.5",
+		"version": "0.1.0",
 		"news": {
+			"0.1.0": {
+				"en": "Several Telegram bots and the MAX messenger; table of write permissions with a button for the installed instances; settings in tabs; \"dry run\" is now \"simulation mode\"",
+				"de": "Mehrere Telegram-Bots und der MAX-Messenger; Tabelle der Schreibrechte mit einer Schaltfläche für die installierten Instanzen; Einstellungen in Reitern; „Probelauf“ heißt jetzt „Simulationsmodus“",
+				"ru": "Несколько ботов Telegram и мессенджер MAX; таблица прав на запись с кнопкой для установленных инстансов; настройки по вкладкам; «пробный запуск» теперь называется «режим симуляции»",
+				"pt": "Vários bots do Telegram e o mensageiro MAX; tabela de permissões de escrita com um botão para as instâncias instaladas; definições em separadores; o \"teste\" chama-se agora \"modo de simulação\"",
+				"nl": "Meerdere Telegram-bots en de MAX-messenger; tabel met schrijfrechten met een knop voor de geïnstalleerde instanties; instellingen in tabbladen; \"proefdraaien\" heet nu \"simulatiemodus\"",
+				"fr": "Plusieurs bots Telegram et la messagerie MAX ; tableau des droits d'écriture avec un bouton pour les instances installées ; paramètres en onglets ; « essai à blanc » s'appelle désormais « mode simulation »",
+				"it": "Più bot Telegram e il messenger MAX; tabella dei permessi di scrittura con un pulsante per le istanze installate; impostazioni in schede; la \"prova\" ora si chiama \"modalità simulazione\"",
+				"es": "Varios bots de Telegram y la mensajería MAX; tabla de permisos de escritura con un botón para las instancias instaladas; configuración en pestañas; la \"prueba\" ahora se llama \"modo de simulación\"",
+				"pl": "Kilka botów Telegrama i komunikator MAX; tabela uprawnień do zapisu z przyciskiem dla zainstalowanych instancji; ustawienia w zakładkach; „próba” nazywa się teraz „tryb symulacji”",
+				"uk": "Кілька ботів Telegram і месенджер MAX; таблиця прав на запис із кнопкою для встановлених інстансів; налаштування на вкладках; «пробний запуск» тепер називається «режим симуляції»",
+				"zh-cn": "多个 Telegram 机器人和 MAX 即时通讯；写入权限表，并带有添加已安装实例的按钮；设置分为多个选项卡；“试运行”现在称为“模拟模式”"
+			},
 			"0.0.5": {
 				"en": "Fix: sendTo from scripts and the admin page reaches the adapter again (the instance restarts once); model list in the settings",
 				"de": "Fehlerbehebung: sendTo aus Skripten und der Admin-Seite erreicht den Adapter wieder (die Instanz startet einmal neu); Modellliste in den Einstellungen",
@@ -145,12 +158,11 @@
 		"provider": "anthropic",
 		"modelId": "",
 		"apiKey": "",
+		"writeRules": [],
 		"writeAllow": "",
 		"instructions": "",
 		"dryRun": true,
-		"telegramInstance": "",
-		"telegramUsers": "",
-		"telegramPrefix": "",
+		"messengers": [],
 		"confirmRequired": "",
 		"historyInstance": "",
 		"timeZone": ""

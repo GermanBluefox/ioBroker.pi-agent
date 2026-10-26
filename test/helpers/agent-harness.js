@@ -88,6 +88,16 @@ function fakeAdapterCore(hooks) {
             this.db.objects[id] = JSON.parse(JSON.stringify(obj));
             this.db.save();
         }
+        async extendForeignObjectAsync(id, obj) {
+            const old = this.db.objects[id] || {};
+            this.db.objects[id] = {
+                ...old,
+                ...obj,
+                common: { ...old.common, ...obj.common },
+                native: { ...old.native, ...obj.native },
+            };
+            this.db.save();
+        }
         async getObjectViewAsync(design, search, params) {
             const type = search === 'instance' ? 'instance' : 'state';
             const rows = Object.keys(this.db.objects)

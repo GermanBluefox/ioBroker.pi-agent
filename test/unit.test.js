@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
-const { parseAllowlist, isWriteAllowed, requestIdFor } = require('../lib/guard');
+const { parseAllowlist, scopePattern, parseWriteRules, isWriteAllowed, requestIdFor } = require('../lib/guard');
 const { coerce, nameText } = require('../lib/tools');
 
 test('allowlist: empty list denies everything', () => {
@@ -53,16 +53,45 @@ test('io-package: the API key is declared encrypted and protected at the top lev
 	assert.equal('protectedNative' in io.common, false);
 });
 
+/**
+ * Every item of the admin page, also those inside tabs and panels.
+ *
+ * @param {Record<string, any>} items items of a level
+ * @returns {Array<[string, any]>} key and item
+ */
+function allItems(items) {
+    return Object.entries(items).flatMap(([key, item]) =>
+        item.type === 'tabs' || item.type === 'panel' ? [[key, item], ...allItems(item.items)] : [[key, item]],
+    );
+}
+
 test('jsonConfig: only component types the admin knows', () => {
 	const config = require('../admin/jsonConfig.json');
-	const known = new Set(['text', 'password', 'number', 'checkbox', 'select', 'instance', 'header', 'autocompleteSendTo']);
-	for (const [key, item] of Object.entries(config.items)) {
+	const known = new Set([
+		'text',
+		'password',
+		'number',
+		'checkbox',
+		'select',
+		'instance',
+		'header',
+		'autocompleteSendTo',
+		'staticText',
+		'table',
+		'tabs',
+		'panel',
+		'sendTo',
+	]);
+	for (const [key, item] of allItems(config.items)) {
 		assert.ok(known.has(item.type), `${key} uses unknown type "${item.type}"`);
+		for (const column of item.type === 'table' ? item.items : []) {
+			assert.ok(known.has(column.type), `${key}.${column.attr} uses unknown type "${column.type}"`);
+		}
 	}
 });
 
 /** Brand names that read the same in every language. */
-const SAME_IN_ALL_LANGUAGES = new Set(['Telegram']);
+const SAME_IN_ALL_LANGUAGES = new Set([]);
 
 test('i18n: eleven languages for instance objects, same admin keys, nothing left in English', () => {
     const fs = require('node:fs');
@@ -88,11 +117,14 @@ test('i18n: eleven languages for instance objects, same admin keys, nothing left
 test('jsonConfig: every label, help and header text has a translation key', () => {
     const config = require('../admin/jsonConfig.json');
     const en = require('../admin/i18n/en.json');
-    for (const [key, item] of Object.entries(config.items)) {
+    for (const [key, item] of allItems(config.items)) {
         for (const field of ['label', 'help', 'text', 'placeholder']) {
             if (item[field]) {
                 assert.ok(item[field] in en, `${key}.${field} "${item[field]}" has no translation`);
             }
+        }
+        for (const column of item.type === 'table' ? item.items : []) {
+            assert.ok(column.title in en, `${key}.${column.attr} title "${column.title}" has no translation`);
         }
     }
 });
@@ -120,4 +152,43 @@ test('io-package: the messagebox is really enabled (sendTo reaches the adapter)'
         ? Object.values(supported).some(v => v !== false)
         : Boolean(io.common.messagebox);
     assert.ok(enabled, 'sendTo would never reach the adapter');
+});
+
+test('jsonConfig: every field of the admin page is a native setting with a default', () => {
+    const config = require('../admin/jsonConfig.json');
+    const io = require('../io-package.json');
+    const fields = allItems(config.items).filter(([key, item]) => !key.startsWith('_') && !['tabs', 'header', 'staticText', 'sendTo'].includes(item.type));
+    for (const [key] of fields) {
+        assert.ok(key in io.native, `${key} has no default in io-package native`);
+    }
+});
+
+test('write rules: a scope covers the id and everything below it, "*" stands for any text', () => {
+    const instance = scopePattern('hm-rpc.0');
+    assert.ok(instance.test('hm-rpc.0'));
+    assert.ok(instance.test('hm-rpc.0.ABC.1.STATE'));
+    assert.ok(!instance.test('hm-rpc.01.ABC'), 'hm-rpc.01 is another instance');
+    assert.ok(!instance.test('xhm-rpc.0.ABC'));
+    const pattern = scopePattern(' hm-rpc.0.*.STATE ');
+    assert.ok(pattern.test('hm-rpc.0.ABC.1.STATE'));
+    assert.ok(!pattern.test('hm-rpc.0.ABC.1.STATE.x'));
+    assert.ok(scopePattern('javascript.0.agent(1)').test('javascript.0.agent(1).x'), 'regex characters are literal');
+    assert.equal(scopePattern('  '), null);
+});
+
+test('write rules: only rows with "write" allow; "confirm" counts only together with "write"', () => {
+    const { allow, confirm } = parseWriteRules([
+        { scope: 'hm-rpc.0', write: true, confirm: false },
+        { scope: 'shelly.0', write: false, confirm: true },
+        { scope: 'zigbee.0.*.lock', write: true, confirm: true },
+        { scope: '', write: true, confirm: true },
+        null,
+    ]);
+    assert.ok(isWriteAllowed('hm-rpc.0.a', allow));
+    assert.ok(!isWriteAllowed('shelly.0.a', allow));
+    assert.ok(isWriteAllowed('zigbee.0.door.lock', allow));
+    assert.ok(!isWriteAllowed('hm-rpc.0.a', confirm));
+    assert.ok(!isWriteAllowed('shelly.0.a', confirm));
+    assert.ok(isWriteAllowed('zigbee.0.door.lock', confirm));
+    assert.deepEqual(parseWriteRules(undefined), { allow: [], confirm: [] });
 });

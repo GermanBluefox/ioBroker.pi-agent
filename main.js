@@ -2,24 +2,15 @@
 
 const utils = require('@iobroker/adapter-core');
 const crypto = require('node:crypto');
-const { parseAllowlist, requestIdFor } = require('./lib/guard');
+const { parseAllowlist, parseWriteRules, requestIdFor } = require('./lib/guard');
 const { createIoBrokerExtension } = require('./lib/tools');
 const { createModelsWithKey, listModels } = require('./lib/providers');
 const { ensureObjects } = require('./lib/objects');
 const { openStore } = require('./lib/store');
 const { resolveTimeZone } = require('./lib/time');
-const {
-    parseAllowedUsers,
-    isAllowedUser,
-    parseRequest,
-    stripPrefix,
-    telegramRequestId,
-    splitMessage,
-    markdownToTelegramHtml,
-    isWellFormedHtml,
-    escapeHtml,
-    TELEGRAM_INSTRUCTIONS,
-} = require('./lib/telegram');
+const { channelsFromConfig, legacyRows, chatKey, parseChatKey, migrateChats } = require('./lib/channels');
+const { createDrivers, messengerType, MESSENGER_ADAPTERS } = require('./lib/messengers');
+const { isAllowedUser, stripPrefix, telegramRequestId } = require('./lib/telegram');
 
 /**
  * Text blocks of the model messages of one transcript entry.
@@ -39,7 +30,7 @@ function answerText(messages) {
  * Pending requests as stored in chat.pending: a list, or the single object of version 0.0.1.
  *
  * @param {unknown} value state value
- * @returns {Array<{ requestId: string, content: string, target: { kind: string, chatId?: string } }>} entries
+ * @returns {Array<{ requestId: string, content: string, target: { kind: string, instance?: string, chatId?: string } }>} entries
  */
 function parsePending(value) {
     if (!value) {
@@ -49,7 +40,20 @@ function parsePending(value) {
     const list = Array.isArray(parsed) ? parsed : [parsed];
     return list
         .filter(e => e && e.requestId && e.content)
-        .map(e => ({ requestId: e.requestId, content: e.content, target: e.target || { kind: 'state' } }));
+        .map(e => ({ requestId: e.requestId, content: e.content, target: chatTarget(e.target) }));
+}
+
+/**
+ * Target of a stored request; up to 0.0.5 a messenger chat was { kind: "telegram", chatId } without an instance.
+ *
+ * @param {{ kind: string, instance?: string, chatId?: string } | undefined} target stored target
+ * @returns {{ kind: string, instance?: string, chatId?: string }} target
+ */
+function chatTarget(target) {
+    if (!target) {
+        return { kind: 'state' };
+    }
+    return target.kind === 'telegram' ? { ...target, kind: 'chat' } : target;
 }
 
 class PiAgent extends utils.Adapter {
@@ -68,19 +72,20 @@ class PiAgent extends utils.Adapter {
         this.allowlist = [];
         /** IANA time zone of the house (setting, else the server's). */
         this.timeZone = 'UTC';
-        /** States whose write the user must confirm in Telegram first. */
+        /** States whose write the user must confirm in the messenger chat first. */
         this.confirmList = [];
-        /** Telegram instance ("telegram.0") or "" when the Telegram link is off. */
-        this.telegram = '';
-        this.allowedUsers = new Set();
-        /** Telegram chat id -> conversation id, persisted in telegram.chats. */
+        /** Messenger instances the agent listens on ("telegram.0" -> allowed users and prefix); empty when off. */
+        this.channels = new Map();
+        /** Sending, reading and confirming per messenger adapter (telegram, max). */
+        this.drivers = createDrivers(this);
+        /** "<instance>/<chat id>" -> conversation id, persisted in telegram.chats. */
         this.chats = {};
         /** Requests that were accepted but not answered yet, persisted in chat.pending. */
         this.pending = [];
         this.pendingWrite = Promise.resolve();
         /** Set in onUnload: errors from the closing harness are interruptions, not failures. */
         this.stopping = false;
-        /** One queue per conversation ("root" or "telegram:<chatId>"): runs of one conversation are serialised. */
+        /** One queue per conversation ("root" or "<instance>/<chat id>"): runs of one conversation are serialised. */
         this.queues = new Map();
         this.readyPromise = new Promise(resolve => {
             this.markReady = resolve;
@@ -90,25 +95,33 @@ class PiAgent extends utils.Adapter {
     async onReady() {
         try {
             await this.setStateAsync('info.connection', { val: false, ack: true });
-            if (await this.enableMessagebox()) {
+            if ((await this.enableMessagebox()) || (await this.migrateMessengerSettings())) {
                 this.markReady();
                 return; // js-controller restarts the instance because its object changed
             }
             // Created here, not in instanceObjects: js-controller would reset their ACL at every start.
             await ensureObjects(this);
-            this.allowlist = parseAllowlist(this.config.writeAllow, (line, msg) =>
-                this.log.warn(`Ignoring invalid allowlist line "${line}": ${msg}`),
-            );
+            // the table "Write permissions" and the regular expressions of the expert fields both count
+            const rules = parseWriteRules(this.config.writeRules);
+            this.allowlist = [
+                ...rules.allow,
+                ...parseAllowlist(this.config.writeAllow, (line, msg) =>
+                    this.log.warn(`Ignoring invalid allowlist line "${line}": ${msg}`),
+                ),
+            ];
             this.timeZone = resolveTimeZone(this.config.timeZone, this.log);
             this.log.info(`Time zone: ${this.timeZone}`);
-            this.confirmList = parseAllowlist(this.config.confirmRequired, (line, msg) =>
-                this.log.warn(`Ignoring invalid confirmation line "${line}": ${msg}`),
-            );
+            this.confirmList = [
+                ...rules.confirm,
+                ...parseAllowlist(this.config.confirmRequired, (line, msg) =>
+                    this.log.warn(`Ignoring invalid confirmation line "${line}": ${msg}`),
+                ),
+            ];
             if (this.allowlist.length === 0) {
                 this.log.warn('The write allowlist is empty: the agent can read but not write anything.');
             }
             if (this.config.dryRun) {
-                this.log.info('Dry run is on: write requests are logged but not executed.');
+                this.log.info('Simulation mode is on: write requests are logged but not executed.');
             }
 
             if (!this.config.apiKey) {
@@ -122,7 +135,7 @@ class PiAgent extends utils.Adapter {
 
             await this.startHarness();
             await this.subscribeStatesAsync('chat.input');
-            await this.startTelegram();
+            await this.startMessengers();
             await this.setStateAsync('info.connection', { val: true, ack: true });
             this.markReady();
 
@@ -159,6 +172,80 @@ class PiAgent extends utils.Adapter {
             this.log.warn(`Could not check the message box setting of the instance: ${e.message}`);
             return false;
         }
+    }
+
+    /**
+     * Versions up to 0.0.5 had one Telegram instance in three single fields; since 0.1.0 it is a row of the table
+     * "messengers". The settings are moved once, so the admin page shows the instance in the table.
+     *
+     * @returns {Promise<boolean>} true when the instance object was changed (js-controller then restarts the instance)
+     */
+    async migrateMessengerSettings() {
+        const native = this.config;
+        const hasTable = Array.isArray(native.messengers) && native.messengers.length > 0;
+        if (hasTable || !String(native.telegramInstance || '').trim()) {
+            return false;
+        }
+        try {
+            await this.extendForeignObjectAsync(`system.adapter.${this.namespace}`, {
+                native: {
+                    messengers: legacyRows(native),
+                    telegramInstance: '',
+                    telegramUsers: '',
+                    telegramPrefix: '',
+                },
+            });
+            this.log.info('Telegram settings moved into the table of messengers; the instance restarts once');
+            return true;
+        } catch (e) {
+            // the single fields keep working: channelsFromConfig reads them while the table is empty
+            this.log.warn(`Could not move the Telegram settings into the table: ${e.message}`);
+            return false;
+        }
+    }
+
+    /**
+     * Installed messenger instances (telegram, max) for the instance column of the messenger table.
+     *
+     * @returns {Promise<Array<{ value: string, label: string }>>} options
+     */
+    async messengerInstanceOptions() {
+        const options = [];
+        for (const name of MESSENGER_ADAPTERS) {
+            const view = await this.getObjectViewAsync('system', 'instance', {
+                startkey: `system.adapter.${name}.`,
+                endkey: `system.adapter.${name}.香`,
+            });
+            for (const row of view.rows) {
+                const instance = row.id.slice('system.adapter.'.length);
+                const title = Object(row.value?.common?.titleLang).en || row.value?.common?.title;
+                options.push({ value: instance, label: title ? `${instance} (${title})` : instance });
+            }
+        }
+        return options;
+    }
+
+    /**
+     * The table "Write permissions" with a row (nothing allowed yet) for every installed instance that has none.
+     * Instances of admin and system tools (adapter type "general" or "storage") and the agent itself are left out.
+     *
+     * @param {unknown} rows rows of the admin page, not saved yet
+     * @returns {Promise<{ rows: Array<{ scope: string, write: boolean, confirm: boolean }>, added: number }>} table
+     */
+    async writeRulesWithInstances(rows) {
+        const table = (Array.isArray(rows) ? rows : []).filter(r => r && typeof r === 'object');
+        const present = new Set(table.map(r => String(r.scope || '').trim()));
+        const view = await this.getObjectViewAsync('system', 'instance', {
+            startkey: 'system.adapter.',
+            endkey: 'system.adapter.香',
+        });
+        const added = view.rows
+            .filter(row => !['general', 'storage'].includes(String(row.value?.common?.type)))
+            .map(row => row.id.slice('system.adapter.'.length))
+            .filter(instance => instance !== this.namespace && !present.has(instance))
+            .sort()
+            .map(instance => ({ scope: instance, write: false, confirm: false }));
+        return { rows: [...table, ...added], added: added.length };
     }
 
     /** Load the ESM packages and open the durable harness on the instance data directory. */
@@ -213,41 +300,63 @@ class PiAgent extends utils.Adapter {
         this.log.info(`Agent ready (${this.model.provider}/${this.model.modelId})`);
     }
 
-    /** Listen to the configured Telegram instance, if any. */
-    async startTelegram() {
-        this.telegram = String(this.config.telegramInstance || '').trim();
-        if (!this.telegram) {
+    /** Listen to the configured messenger instances, if any. */
+    async startMessengers() {
+        this.channels = new Map();
+        for (const channel of channelsFromConfig(this.config)) {
+            const driver = this.drivers[messengerType(channel.instance)];
+            if (driver) {
+                this.channels.set(channel.instance, { ...channel, driver });
+            } else {
+                this.log.warn(
+                    `Messenger ${channel.instance} ignored: only ${MESSENGER_ADAPTERS.join(' and ')} are supported`,
+                );
+            }
+        }
+        if (this.channels.size === 0) {
             return;
         }
-        this.allowedUsers = parseAllowedUsers(this.config.telegramUsers);
-        if (this.allowedUsers.size === 0) {
-            this.log.warn('Telegram is on, but no user is allowed: every Telegram message is ignored.');
-        }
         const stored = await this.getStateAsync('telegram.chats');
-        this.chats = stored?.val ? JSON.parse(String(stored.val)) : {};
-        // Chats keep their own conversation; a model change in the settings reaches them too.
-        for (const id of Object.values(this.chats)) {
-            const conversation = await this.harness.conversation(id, this.context);
-            await conversation?.configure({ model: this.model, instructions: TELEGRAM_INSTRUCTIONS }, this.context);
+        const { chats, changed } = migrateChats(stored?.val ? JSON.parse(String(stored.val)) : {}, this.firstChannel());
+        this.chats = chats;
+        if (changed) {
+            await this.setStateAsync('telegram.chats', { val: JSON.stringify(this.chats), ack: true });
         }
-        await this.subscribeForeignStatesAsync(`${this.telegram}.communicate.request`);
-        const prefix = String(this.config.telegramPrefix || '').trim();
-        this.log.info(
-            `Telegram: listening on ${this.telegram} for ${this.allowedUsers.size} allowed user(s)${prefix ? `, prefix "${prefix}"` : ''}`,
-        );
+        // Chats keep their own conversation; a model change in the settings reaches them too.
+        for (const [key, id] of Object.entries(this.chats)) {
+            const driver = this.channels.get(parseChatKey(key, this.firstChannel()).instance)?.driver;
+            const conversation = driver ? await this.harness.conversation(id, this.context) : undefined;
+            await conversation?.configure({ model: this.model, instructions: driver.instructions }, this.context);
+        }
+        for (const { instance, allowed, prefix, driver } of this.channels.values()) {
+            if (allowed.size === 0) {
+                this.log.warn(`${driver.label} ${instance}: no user is allowed, every message is ignored.`);
+            }
+            await this.subscribeForeignStatesAsync(`${instance}.communicate.request`);
+            this.log.info(
+                `${driver.label}: listening on ${instance} for ${allowed.size} allowed user(s)${prefix ? `, prefix "${prefix}"` : ''}`,
+            );
+        }
+    }
+
+    /** @returns {string} first configured messenger instance, or "" (the one of chats stored by 0.0.5) */
+    firstChannel() {
+        return this.channels.keys().next().value || '';
     }
 
     /**
-     * Conversation of a request: one per Telegram chat, the root conversation for everything else.
+     * Conversation of a request: one per messenger chat (per instance), the root conversation for everything else.
      *
-     * @param {{ kind: string, chatId?: string }} target where the answer goes
+     * @param {{ kind: string, instance?: string, chatId?: string }} target where the answer goes
      * @returns {Promise<object>} conversation handle
      */
     async conversationFor(target) {
-        if (target.kind !== 'telegram') {
+        if (target.kind !== 'chat') {
             return this.root;
         }
-        const known = this.chats[target.chatId];
+        const { instructions } = this.channels.get(target.instance).driver;
+        const key = chatKey(target.instance, target.chatId);
+        const known = this.chats[key];
         if (known) {
             const conversation = await this.harness.conversation(known, this.context);
             if (conversation) {
@@ -255,70 +364,52 @@ class PiAgent extends utils.Adapter {
             }
         }
         const created = await this.harness.createConversation(
-            { ownership: { kind: 'ownerless' }, agent: { model: this.model, instructions: TELEGRAM_INSTRUCTIONS } },
+            { ownership: { kind: 'ownerless' }, agent: { model: this.model, instructions } },
             this.context,
         );
-        this.chats[target.chatId] = created.id;
+        this.chats[key] = created.id;
         // chats run in parallel; chained writes always store the newest map
         this.chatsWrite = (this.chatsWrite || Promise.resolve())
             .then(async () => {
                 await this.setStateAsync('telegram.chats', { val: JSON.stringify(this.chats), ack: true });
             })
             .catch(e => {
-                this.log.warn(`Telegram chats could not be saved: ${e.message}`);
+                this.log.warn(`Messenger chats could not be saved: ${e.message}`);
             });
         await this.chatsWrite;
-        this.log.info(`Telegram: new conversation for chat ${target.chatId}`);
+        this.log.info(`New conversation for chat ${target.chatId} on ${target.instance}`);
         return created;
     }
 
     /**
-     * Telegram chat of a conversation, if the conversation belongs to one.
+     * Messenger chat of a conversation, if the conversation belongs to one on a configured instance.
      *
      * @param {unknown} conversationId conversation id
-     * @returns {string | undefined} chat id
+     * @returns {{ instance: string, chatId: string } | undefined} instance and chat
      */
     chatOf(conversationId) {
-        return Object.keys(this.chats).find(chatId => String(this.chats[chatId]) === String(conversationId));
+        const key = Object.keys(this.chats).find(k => String(this.chats[k]) === String(conversationId));
+        if (!key) {
+            return undefined;
+        }
+        const chat = parseChatKey(key, this.firstChannel());
+        return this.channels.has(chat.instance) ? chat : undefined;
     }
 
     /**
-     * Ask the user in the Telegram chat of the conversation whether a write may happen.
+     * Ask the user in the messenger chat of the conversation whether a write may happen.
      *
      * @param {{ conversationId: unknown, id: string, val: unknown }} request the write to confirm
-     * @returns {Promise<string>} "yes", "no", "timeout" or "unavailable" (no Telegram chat for this conversation)
+     * @returns {Promise<string>} "yes", "no", "timeout" or "unavailable" (no messenger chat for this conversation)
      */
     async requestConfirmation({ conversationId, id, val }) {
-        const chatId = this.chatOf(conversationId);
-        if (!this.telegram || !chatId) {
-            this.log.warn(`Confirmation for ${id} needed, but the request did not come from a Telegram chat`);
+        const chat = this.chatOf(conversationId);
+        if (!chat) {
+            this.log.warn(`Confirmation for ${id} needed, but the request did not come from a messenger chat`);
             return 'unavailable';
         }
-        const question = `⚠️ Set <code>${escapeHtml(id)}</code> to <code>${escapeHtml(JSON.stringify(val))}</code>?`;
         try {
-            const answer = await this.sendToAsync(
-                this.telegram,
-                'ask',
-                {
-                    text: question,
-                    chatId,
-                    parse_mode: 'HTML',
-                    reply_markup: {
-                        inline_keyboard: [
-                            [
-                                { text: '✅ Yes', callback_data: 'pi-agent:yes' },
-                                { text: '❌ No', callback_data: 'pi-agent:no' },
-                            ],
-                        ],
-                    },
-                },
-                { timeout: 10 * 60_000 },
-            );
-            if (String(answer) === '__timeout__') {
-                return 'timeout';
-            }
-            // the telegram adapter answers with the pressed button (a callback query with "data")
-            return Object(answer).data === 'pi-agent:yes' ? 'yes' : 'no';
+            return await this.channels.get(chat.instance).driver.confirm(chat.instance, chat.chatId, id, val);
         } catch (e) {
             this.log.warn(`No answer to the confirmation for ${id}: ${e.message}`);
             return 'timeout';
@@ -326,15 +417,15 @@ class PiAgent extends utils.Adapter {
     }
 
     /**
-     * A reminder is due: send it to the Telegram chat of its conversation, or to chat.answer.
+     * A reminder is due: send it to the messenger chat of its conversation, or to chat.answer.
      *
      * @param {unknown} conversationId conversation that set the reminder
      * @param {string} text reminder text
      */
     async deliverReminder(conversationId, text) {
-        const chatId = this.chatOf(conversationId);
-        const target = this.telegram && chatId ? { kind: 'telegram', chatId } : { kind: 'state' };
-        this.log.info(`Reminder due${chatId ? ` for chat ${chatId}` : ''}`);
+        const chat = this.chatOf(conversationId);
+        const target = chat ? { kind: 'chat', ...chat } : { kind: 'state' };
+        this.log.info(`Reminder due${chat ? ` for chat ${chat.chatId} on ${chat.instance}` : ''}`);
         await this.deliver(target, `⏰ ${text}`);
     }
 
@@ -384,7 +475,7 @@ class PiAgent extends utils.Adapter {
      *
      * @param {string} content user text
      * @param {string} requestId stable id, so a retry finds the original submission
-     * @param {{ kind: string, chatId?: string }} [target] where the answer goes (kept for a restart)
+     * @param {{ kind: string, instance?: string, chatId?: string }} [target] where the answer goes (kept for a restart)
      * @returns {Promise<string>} answer text
      */
     ask(content, requestId, target = { kind: 'state' }) {
@@ -398,7 +489,7 @@ class PiAgent extends utils.Adapter {
             await this.savePending();
         })();
         // One queue per conversation: a chat waits for its own earlier request, not for other chats.
-        const key = target.kind === 'telegram' ? `telegram:${target.chatId}` : 'root';
+        const key = target.kind === 'chat' ? chatKey(target.instance, target.chatId) : 'root';
         const previous = this.queues.get(key) || Promise.resolve();
         const run = Promise.all([admitted, previous]).then(async () => {
             try {
@@ -461,7 +552,7 @@ class PiAgent extends utils.Adapter {
     /**
      * Run a request and deliver the answer (or the error) to its target.
      *
-     * @param {{ requestId: string, content: string, target: { kind: string, chatId?: string } }} entry request
+     * @param {{ requestId: string, content: string, target: { kind: string, instance?: string, chatId?: string } }} entry request
      */
     async process(entry) {
         try {
@@ -479,22 +570,12 @@ class PiAgent extends utils.Adapter {
     }
 
     /**
-     * @param {{ kind: string, chatId?: string }} target where the answer goes
+     * @param {{ kind: string, instance?: string, chatId?: string }} target where the answer goes
      * @param {string} text answer or error text
      */
     async deliver(target, text) {
-        if (target.kind === 'telegram') {
-            for (const part of splitMessage(text)) {
-                // Telegram shows Markdown literally; its HTML mode renders bold, italic, code and links.
-                // The telegram adapter does not report a rejected message back, so only well-formed HTML is sent.
-                const html = markdownToTelegramHtml(part);
-                if (isWellFormedHtml(html)) {
-                    this.sendTo(this.telegram, 'send', { text: html, chatId: target.chatId, parse_mode: 'HTML' });
-                } else {
-                    this.log.warn('Telegram: the answer could not be converted to valid HTML; sent as plain text');
-                    this.sendTo(this.telegram, 'send', { text: part, chatId: target.chatId });
-                }
-            }
+        if (target.kind === 'chat') {
+            this.channels.get(target.instance).driver.send(target.instance, target.chatId, text);
             return;
         }
         // "state", and "sendTo" after a restart: the caller is no longer waiting.
@@ -513,8 +594,12 @@ class PiAgent extends utils.Adapter {
         }
         this.pending = entries;
         for (const entry of entries) {
-            if (entry.target.kind === 'telegram' && !this.telegram) {
-                entry.target = { kind: 'state' }; // Telegram was switched off meanwhile
+            if (entry.target.kind === 'chat') {
+                // entries of 0.0.5 and earlier have no instance: they came from the only one
+                entry.target = { ...entry.target, instance: entry.target.instance || this.firstChannel() };
+                if (!this.channels.has(entry.target.instance)) {
+                    entry.target = { kind: 'state' }; // this messenger instance was switched off meanwhile
+                }
             }
             this.log.info(`Continuing request ${entry.requestId} after restart`);
         }
@@ -526,8 +611,9 @@ class PiAgent extends utils.Adapter {
      * @param {ioBroker.State | null | undefined} state new state
      */
     async onStateChange(id, state) {
-        if (this.telegram && id === `${this.telegram}.communicate.request`) {
-            return this.onTelegram(state);
+        const instance = id.endsWith('.communicate.request') ? id.slice(0, -'.communicate.request'.length) : '';
+        if (this.channels.has(instance)) {
+            return this.onChatMessage(instance, state);
         }
         if (!state || state.ack || id !== `${this.namespace}.chat.input` || !state.val) {
             return;
@@ -540,51 +626,41 @@ class PiAgent extends utils.Adapter {
     }
 
     /**
-     * A message arrived at the Telegram instance: check sender and prefix, then ask in the chat's conversation.
+     * A message arrived at a messenger instance: check sender and prefix, then ask in the chat's conversation.
      *
-     * @param {ioBroker.State | null | undefined} state value of <telegram>.communicate.request ("[name]text")
+     * @param {string} instance messenger instance the message came from
+     * @param {ioBroker.State | null | undefined} state value of <instance>.communicate.request ("[name]text")
      */
-    async onTelegram(state) {
+    async onChatMessage(instance, state) {
         if (!state || !state.val) {
             return;
         }
-        const base = `${this.telegram}.communicate`;
-        const meta = await this.getForeignStatesAsync([
-            `${base}.requestChatId`,
-            `${base}.requestUserId`,
-            `${base}.requestMessageId`,
-            `${base}.users`,
-        ]);
-        const chatId = meta[`${base}.requestChatId`]?.val;
-        const userId = meta[`${base}.requestUserId`]?.val;
-        const messageId = meta[`${base}.requestMessageId`]?.val;
-        const { name, text } = parseRequest(state.val);
-        if (chatId === null || chatId === undefined || chatId === '') {
-            this.log.warn(`Telegram message without chat id ignored`);
+        const { allowed, prefix, driver } = this.channels.get(instance);
+        const request = await driver.readRequest(instance, state.val);
+        const { chatId, messageId, name, text, sender } = request;
+        if (!chatId) {
+            this.log.warn(`${driver.label} message on ${instance} without chat id ignored`);
             return;
         }
-        let users = {};
-        try {
-            users = JSON.parse(String(meta[`${base}.users`]?.val || '{}'));
-        } catch {
-            // the user list is only used to resolve user names
-        }
-        const known = users[String(userId)];
-        const sender = { userId, userName: known?.userName, firstName: known?.firstName, known: Boolean(known) };
-        if (!isAllowedUser(sender, this.allowedUsers)) {
-            const who = [known?.firstName, known?.userName].filter(Boolean).join(' / ') || name || '?';
-            this.log.warn(`Telegram message from ${who} (${userId ?? '?'}) ignored: user not allowed`);
+        if (!isAllowedUser(sender, allowed)) {
+            const who = [sender.firstName, sender.userName].filter(Boolean).join(' / ') || name || '?';
+            this.log.warn(
+                `${driver.label} message on ${instance} from ${who} (${sender.userId ?? '?'}) ignored: user not allowed`,
+            );
             return;
         }
-        const content = stripPrefix(text, String(this.config.telegramPrefix || ''));
+        if (driver.takeButton(instance, request)) {
+            return; // a button of a confirmation, not a message for the model
+        }
+        const content = stripPrefix(text, prefix);
         if (content === null) {
             return; // not for the agent; the bot may serve other scripts too
         }
         const requestId =
             messageId !== null && messageId !== undefined
-                ? telegramRequestId(chatId, messageId)
+                ? telegramRequestId(instance, chatId, messageId)
                 : requestIdFor(crypto, state.ts, state.val);
-        await this.process({ requestId, content, target: { kind: 'telegram', chatId: String(chatId) } });
+        await this.process({ requestId, content, target: { kind: 'chat', instance, chatId } });
     }
 
     /** @param {ioBroker.Message} obj message from a script or another adapter */
@@ -596,6 +672,33 @@ class PiAgent extends utils.Adapter {
                 options = await listModels(String(Object(obj.message).provider || this.config.provider || ''));
             } catch (e) {
                 this.log.debug(`No model list: ${e.message}`);
+            }
+            if (obj.callback) {
+                this.sendTo(obj.from, obj.command, options, obj.callback);
+            }
+            return;
+        }
+        if (obj?.command === 'importInstances') {
+            // button of the admin page: jsonData sends the unsaved table, "native" in the answer (useNative) replaces it
+            let answer;
+            try {
+                const { rows, added } = await this.writeRulesWithInstances(Object(obj.message).writeRules);
+                answer = { native: { writeRules: rows } };
+                this.log.info(`Write permissions: ${added} installed instance(s) added to the table (not saved yet)`);
+            } catch (e) {
+                answer = { error: e.message };
+            }
+            if (obj.callback) {
+                this.sendTo(obj.from, obj.command, answer, obj.callback);
+            }
+            return;
+        }
+        if (obj?.command === 'listMessengerInstances') {
+            let options = [];
+            try {
+                options = await this.messengerInstanceOptions();
+            } catch (e) {
+                this.log.debug(`No list of messenger instances: ${e.message}`);
             }
             if (obj.callback) {
                 this.sendTo(obj.from, obj.command, options, obj.callback);

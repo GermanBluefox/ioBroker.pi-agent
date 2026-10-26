@@ -1,174 +1,265 @@
 {
+	"type": "tabs",
 	"i18n": true,
-	"type": "panel",
 	"items": {
-		"provider": {
-			"type": "select",
-			"label": "Provider",
-			"options": [
-				{
-					"label": "Anthropic",
-					"value": "anthropic"
+		"_generalTab": {
+			"type": "panel",
+			"label": "General",
+			"items": {
+				"provider": {
+					"type": "select",
+					"label": "Provider",
+					"options": [
+						{
+							"label": "Anthropic",
+							"value": "anthropic"
+						},
+						{
+							"label": "OpenAI",
+							"value": "openai"
+						},
+						{
+							"label": "DeepSeek",
+							"value": "deepseek"
+						}
+					],
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
-				{
-					"label": "OpenAI",
-					"value": "openai"
+				"modelId": {
+					"type": "autocompleteSendTo",
+					"command": "listModels",
+					"jsonData": "{\"provider\": \"${data.provider}\"}",
+					"alsoDependsOn": [
+						"provider"
+					],
+					"freeSolo": true,
+					"label": "Model",
+					"help": "Choose a model of the provider or type any model ID. Empty: the default model of the provider",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				},
-				{
-					"label": "DeepSeek",
-					"value": "deepseek"
+				"apiKey": {
+					"type": "password",
+					"label": "API key",
+					"repeat": false,
+					"xs": 12,
+					"sm": 12,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"dryRun": {
+					"type": "checkbox",
+					"label": "Simulation mode (nothing is switched)",
+					"help": "The agent says what it would switch, but does not write any state",
+					"newLine": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"instructions": {
+					"type": "text",
+					"label": "Instructions",
+					"help": "Additional instructions for the agent",
+					"minRows": 3,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"maxRows": 12
+				},
+				"historyInstance": {
+					"type": "instance",
+					"adapter": "_dataSources",
+					"allowDeactivate": true,
+					"label": "History instance",
+					"help": "Empty: the default history of the system settings",
+					"newLine": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"timeZone": {
+					"type": "text",
+					"label": "Time zone",
+					"help": "IANA name such as Europe/Berlin. Empty: the time zone of the ioBroker server",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
 				}
-			],
-			"xs": 12,
-			"sm": 6,
-			"md": 4,
-			"lg": 4,
-			"xl": 4
+			}
 		},
-		"modelId": {
-			"type": "autocompleteSendTo",
-			"command": "listModels",
-			"jsonData": "{\"provider\": \"${data.provider}\"}",
-			"alsoDependsOn": [
-				"provider"
-			],
-			"freeSolo": true,
-			"label": "Model",
-			"help": "Choose a model of the provider or type any model ID. Empty: the default model of the provider",
-			"xs": 12,
-			"sm": 6,
-			"md": 4,
-			"lg": 4,
-			"xl": 4
+		"_writeTab": {
+			"type": "panel",
+			"label": "Write permissions",
+			"items": {
+				"writeRulesHelp": {
+					"type": "staticText",
+					"text": "One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed.",
+					"newLine": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"importInstances": {
+					"type": "sendTo",
+					"command": "importInstances",
+					"label": "Add installed instances",
+					"jsonData": "{\"writeRules\": ${JSON.stringify(data.writeRules || [])}}",
+					"useNative": true,
+					"variant": "outlined",
+					"showProcess": true,
+					"newLine": true,
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 3,
+					"xl": 3
+				},
+				"writeRules": {
+					"type": "table",
+					"newLine": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"items": [
+						{
+							"type": "text",
+							"attr": "scope",
+							"title": "Scope",
+							"width": "50%",
+							"default": ""
+						},
+						{
+							"type": "checkbox",
+							"attr": "write",
+							"title": "Write allowed",
+							"width": "25%",
+							"default": false
+						},
+						{
+							"type": "checkbox",
+							"attr": "confirm",
+							"title": "Confirmation required",
+							"width": "25%",
+							"default": false,
+							"disabled": "!data.write"
+						}
+					]
+				},
+				"expertHeader": {
+					"type": "header",
+					"text": "Advanced: regular expressions",
+					"size": 4,
+					"newLine": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"writeAllow": {
+					"type": "text",
+					"label": "Write allowlist",
+					"help": "In addition to the table: one regular expression per line. A state whose ID matches one may be written.",
+					"minRows": 4,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"maxRows": 12,
+					"newLine": true
+				},
+				"confirmRequired": {
+					"type": "text",
+					"label": "Confirmation required",
+					"help": "In addition to the table: one regular expression per line. A write to a matching state (it must also be allowed) happens only after the user confirms it with a button in the messenger chat.",
+					"minRows": 2,
+					"maxRows": 10,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"newLine": true
+				}
+			}
 		},
-		"apiKey": {
-			"type": "password",
-			"label": "API key",
-			"repeat": false,
-			"xs": 12,
-			"sm": 12,
-			"md": 4,
-			"lg": 4,
-			"xl": 4
-		},
-		"dryRun": {
-			"type": "checkbox",
-			"label": "Dry run",
-			"help": "Log write requests instead of executing them",
-			"newLine": true,
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		},
-		"writeAllow": {
-			"type": "text",
-			"label": "Write allowlist",
-			"help": "One regular expression per line. The agent may only write states whose ID matches one of them.",
-			"minRows": 4,
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12,
-			"maxRows": 12
-		},
-		"confirmRequired": {
-			"type": "text",
-			"label": "Confirmation required",
-			"help": "One regular expression per line. A write to a matching state (it must also be on the allowlist) happens only after the user confirms it with a button in Telegram.",
-			"minRows": 2,
-			"maxRows": 10,
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		},
-		"instructions": {
-			"type": "text",
-			"label": "Instructions",
-			"help": "Additional instructions for the agent",
-			"minRows": 3,
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12,
-			"maxRows": 12
-		},
-		"historyInstance": {
-			"type": "instance",
-			"adapter": "_dataSources",
-			"allowDeactivate": true,
-			"label": "History instance",
-			"help": "Empty: the default history of the system settings",
-			"newLine": true,
-			"xs": 12,
-			"sm": 6,
-			"md": 4,
-			"lg": 4,
-			"xl": 4
-		},
-		"timeZone": {
-			"type": "text",
-			"label": "Time zone",
-			"help": "IANA name such as Europe/Berlin. Empty: the time zone of the ioBroker server",
-			"xs": 12,
-			"sm": 6,
-			"md": 4,
-			"lg": 4,
-			"xl": 4
-		},
-		"telegramHeader": {
-			"type": "header",
-			"text": "Telegram",
-			"size": 3,
-			"newLine": true,
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
-		},
-		"telegramInstance": {
-			"type": "instance",
-			"adapter": "telegram",
-			"allowDeactivate": true,
-			"label": "Telegram instance",
-			"help": "Empty: the agent does not use Telegram",
-			"newLine": true,
-			"xs": 12,
-			"sm": 6,
-			"md": 4,
-			"lg": 4,
-			"xl": 4
-		},
-		"telegramPrefix": {
-			"type": "text",
-			"label": "Prefix",
-			"help": "Only messages that start with this text go to the agent, e.g. /ai. Empty: every message of an allowed user",
-			"hidden": "!data.telegramInstance",
-			"xs": 12,
-			"sm": 6,
-			"md": 4,
-			"lg": 4,
-			"xl": 4
-		},
-		"telegramUsers": {
-			"type": "text",
-			"label": "Allowed Telegram users",
-			"help": "Telegram user ID, user name or first name (as in the telegram adapter), one per line. Messages from anyone else are ignored.",
-			"minRows": 3,
-			"maxRows": 10,
-			"hidden": "!data.telegramInstance",
-			"newLine": true,
-			"xs": 12,
-			"sm": 12,
-			"md": 12,
-			"lg": 12,
-			"xl": 12
+		"_messengersTab": {
+			"type": "panel",
+			"label": "Messengers",
+			"items": {
+				"messengersHelp": {
+					"type": "staticText",
+					"text": "One row per bot of a telegram or max instance. Users: user ID, user name or first name (as in the messenger adapter), separated by commas; messages from anyone else are ignored. Prefix: only messages that start with it go to the agent, e.g. /ai; empty: every message of an allowed user.",
+					"newLine": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
+				"messengers": {
+					"type": "table",
+					"newLine": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12,
+					"items": [
+						{
+							"type": "checkbox",
+							"attr": "enabled",
+							"title": "Active",
+							"width": "8%",
+							"default": true
+						},
+						{
+							"type": "autocompleteSendTo",
+							"attr": "instance",
+							"title": "Instance",
+							"width": "27%",
+							"command": "listMessengerInstances",
+							"freeSolo": true,
+							"default": ""
+						},
+						{
+							"type": "text",
+							"attr": "users",
+							"title": "Allowed users",
+							"width": "45%",
+							"default": ""
+						},
+						{
+							"type": "text",
+							"attr": "prefix",
+							"title": "Prefix",
+							"width": "20%",
+							"default": ""
+						}
+					]
+				}
+			}
 		}
 	}
 }
