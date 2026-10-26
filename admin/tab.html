@@ -1,0 +1,490 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Pi Agent</title>
+        <script src="../../lib/js/socket.io.js"></script>
+        <style>
+            :root {
+                --bg: #ffffff;
+                --panel: #f5f5f5;
+                --text: #1f1f1f;
+                --muted: #6b6b6b;
+                --border: #dddddd;
+                --accent: #1e6fd9;
+                --accent-bg: #e3eefc;
+                --accent-text: #0c3f80;
+                --warn: #b26a00;
+                --warn-bg: #fff4e0;
+                --error: #b3261e;
+                --error-bg: #fdecea;
+            }
+            body.dark {
+                --bg: #1e1e1e;
+                --panel: #2a2a2a;
+                --text: #e6e6e6;
+                --muted: #a0a0a0;
+                --border: #3d3d3d;
+                --accent: #6ea8fe;
+                --accent-bg: #1f3554;
+                --accent-text: #d6e6ff;
+                --warn: #ffb74d;
+                --warn-bg: #3d2e12;
+                --error: #f28b82;
+                --error-bg: #3c1f1d;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                height: 100%;
+                margin: 0;
+            }
+            body {
+                display: flex;
+                flex-direction: column;
+                background: var(--bg);
+                color: var(--text);
+                font: 14px/1.5 Roboto, 'Segoe UI', Arial, sans-serif;
+            }
+            header {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 10px 16px;
+                border-bottom: 1px solid var(--border);
+            }
+            header .title {
+                font-weight: 500;
+                font-size: 16px;
+            }
+            header .info {
+                color: var(--muted);
+                font-size: 12px;
+            }
+            header .spacer {
+                flex: 1;
+            }
+            .badge {
+                background: var(--warn-bg);
+                color: var(--warn);
+                border-radius: 10px;
+                padding: 1px 8px;
+                font-size: 12px;
+            }
+            button {
+                font: inherit;
+                color: var(--text);
+                background: transparent;
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                padding: 5px 12px;
+                cursor: pointer;
+            }
+            button:hover:not(:disabled) {
+                background: var(--panel);
+            }
+            button:disabled {
+                opacity: 0.5;
+                cursor: default;
+            }
+            button.primary {
+                background: var(--accent);
+                border-color: var(--accent);
+                color: #ffffff;
+            }
+            #messages {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .msg {
+                max-width: min(760px, 85%);
+                padding: 8px 12px;
+                border-radius: 12px;
+                white-space: pre-wrap;
+                overflow-wrap: anywhere;
+            }
+            .user {
+                align-self: flex-end;
+                background: var(--accent-bg);
+                color: var(--accent-text);
+            }
+            .assistant {
+                align-self: flex-start;
+                background: var(--panel);
+                border: 1px solid var(--border);
+            }
+            .notice {
+                align-self: flex-start;
+                background: var(--warn-bg);
+                color: var(--warn);
+            }
+            .tool {
+                align-self: flex-start;
+                color: var(--muted);
+                font-size: 12px;
+                font-family: Consolas, monospace;
+            }
+            .tool::before {
+                content: '\2699\FE0E  ';
+            }
+            .error {
+                align-self: stretch;
+                background: var(--error-bg);
+                color: var(--error);
+            }
+            .question {
+                align-self: flex-start;
+                background: var(--panel);
+                border: 1px solid var(--warn);
+            }
+            .question .buttons {
+                display: flex;
+                gap: 8px;
+                margin-top: 8px;
+            }
+            .hint,
+            .thinking {
+                align-self: center;
+                color: var(--muted);
+            }
+            .thinking {
+                align-self: flex-start;
+            }
+            .msg pre {
+                margin: 4px 0;
+                padding: 6px 8px;
+                background: var(--bg);
+                border-radius: 6px;
+                overflow-x: auto;
+                white-space: pre;
+            }
+            .msg code {
+                font-family: Consolas, monospace;
+            }
+            .msg a {
+                color: var(--accent);
+            }
+            footer {
+                display: flex;
+                gap: 8px;
+                padding: 10px 16px;
+                border-top: 1px solid var(--border);
+            }
+            textarea {
+                flex: 1;
+                resize: none;
+                font: inherit;
+                color: var(--text);
+                background: var(--bg);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                padding: 7px 10px;
+                max-height: 160px;
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <span class="title">Pi Agent</span>
+            <span class="info" id="model"></span>
+            <span class="badge" id="simulation" hidden></span>
+            <span class="spacer"></span>
+            <button id="new"></button>
+        </header>
+        <div id="messages"></div>
+        <footer>
+            <textarea id="input" rows="1"></textarea>
+            <button class="primary" id="send"></button>
+        </footer>
+        <script>
+            'use strict';
+            /* global io */
+
+            // Texts in the 11 languages of ioBroker: en, de, ru, pt, nl, fr, it, es, pl, uk, zh-cn
+            const LANGS = ['en', 'de', 'ru', 'pt', 'nl', 'fr', 'it', 'es', 'pl', 'uk', 'zh-cn'];
+            const TEXTS = {
+                newConversation: ['New conversation', 'Neue Unterhaltung', 'Новая беседа', 'Nova conversa', 'Nieuw gesprek', 'Nouvelle conversation', 'Nuova conversazione', 'Nueva conversación', 'Nowa rozmowa', 'Нова розмова', '新对话'],
+                confirmNew: [
+                    'Start a new conversation? The agent forgets the current one.',
+                    'Neue Unterhaltung beginnen? Der Agent vergisst die bisherige.',
+                    'Начать новую беседу? Агент забудет текущую.',
+                    'Começar uma nova conversa? O agente esquece a atual.',
+                    'Een nieuw gesprek beginnen? De agent vergeet het huidige.',
+                    "Commencer une nouvelle conversation ? L'agent oublie l'actuelle.",
+                    "Iniziare una nuova conversazione? L'agente dimentica quella attuale.",
+                    '¿Empezar una nueva conversación? El agente olvida la actual.',
+                    'Rozpocząć nową rozmowę? Agent zapomni obecną.',
+                    'Почати нову розмову? Агент забуде поточну.',
+                    '开始新对话？代理会忘记当前对话。',
+                ],
+                placeholder: [
+                    'Ask the agent (Enter sends, Shift+Enter for a new line)',
+                    'Frage an den Agenten (Enter sendet, Umschalt+Enter für eine neue Zeile)',
+                    'Вопрос агенту (Enter отправляет, Shift+Enter — новая строка)',
+                    'Pergunta ao agente (Enter envia, Shift+Enter para uma nova linha)',
+                    'Vraag aan de agent (Enter verstuurt, Shift+Enter voor een nieuwe regel)',
+                    "Question à l'agent (Entrée envoie, Maj+Entrée pour une nouvelle ligne)",
+                    "Domanda all'agente (Invio invia, Maiusc+Invio per una nuova riga)",
+                    'Pregunta al agente (Intro envía, Mayús+Intro para una nueva línea)',
+                    'Pytanie do agenta (Enter wysyła, Shift+Enter nowa linia)',
+                    'Питання агенту (Enter надсилає, Shift+Enter — новий рядок)',
+                    '向代理提问（Enter 发送，Shift+Enter 换行）',
+                ],
+                send: ['Send', 'Senden', 'Отправить', 'Enviar', 'Versturen', 'Envoyer', 'Invia', 'Enviar', 'Wyślij', 'Надіслати', '发送'],
+                thinking: ['thinking …', 'denkt nach …', 'думает …', 'a pensar …', 'denkt na …', 'réfléchit …', 'sta pensando …', 'pensando …', 'myśli …', 'думає …', '思考中 …'],
+                yes: ['Yes', 'Ja', 'Да', 'Sim', 'Ja', 'Oui', 'Sì', 'Sí', 'Tak', 'Так', '是'],
+                no: ['No', 'Nein', 'Нет', 'Não', 'Nee', 'Non', 'No', 'No', 'Nie', 'Ні', '否'],
+                question: ['Set %id to %val?', '%id auf %val setzen?', 'Установить %id в %val?', 'Definir %id como %val?', '%id op %val zetten?', 'Mettre %id à %val ?', 'Impostare %id a %val?', '¿Poner %id a %val?', 'Ustawić %id na %val?', 'Встановити %id у %val?', '将 %id 设置为 %val？'],
+                simulation: ['Simulation mode', 'Simulationsmodus', 'Режим симуляции', 'Modo de simulação', 'Simulatiemodus', 'Mode simulation', 'Modalità simulazione', 'Modo de simulación', 'Tryb symulacji', 'Режим симуляції', '模拟模式'],
+                notRunning: [
+                    'The agent is not running. Enter the API key in the instance settings.',
+                    'Der Agent läuft nicht. Trage den API-Schlüssel in den Instanzeinstellungen ein.',
+                    'Агент не работает. Введите API-ключ в настройках инстанса.',
+                    'O agente não está em execução. Introduza a chave da API nas definições da instância.',
+                    'De agent draait niet. Vul de API-sleutel in bij de instellingen van de instantie.',
+                    "L'agent ne fonctionne pas. Saisissez la clé API dans les paramètres de l'instance.",
+                    "L'agente non è in esecuzione. Inserisci la chiave API nelle impostazioni dell'istanza.",
+                    'El agente no está en marcha. Introduce la clave de API en la configuración de la instancia.',
+                    'Agent nie działa. Wpisz klucz API w ustawieniach instancji.',
+                    'Агент не працює. Введіть API-ключ у налаштуваннях інстансу.',
+                    '代理未运行。请在实例设置中输入 API 密钥。',
+                ],
+                offline: [
+                    'No connection to ioBroker or the instance is stopped.',
+                    'Keine Verbindung zu ioBroker oder die Instanz ist gestoppt.',
+                    'Нет соединения с ioBroker или инстанс остановлен.',
+                    'Sem ligação ao ioBroker ou a instância está parada.',
+                    'Geen verbinding met ioBroker of de instantie is gestopt.',
+                    "Pas de connexion à ioBroker ou l'instance est arrêtée.",
+                    "Nessuna connessione a ioBroker oppure l'istanza è ferma.",
+                    'Sin conexión con ioBroker o la instancia está detenida.',
+                    'Brak połączenia z ioBroker lub instancja jest zatrzymana.',
+                    'Немає зʼєднання з ioBroker або інстанс зупинено.',
+                    '无法连接到 ioBroker，或实例已停止。',
+                ],
+                busy: [
+                    'The agent is still answering the previous question.',
+                    'Der Agent beantwortet noch die vorige Frage.',
+                    'Агент ещё отвечает на предыдущий вопрос.',
+                    'O agente ainda está a responder à pergunta anterior.',
+                    'De agent beantwoordt de vorige vraag nog.',
+                    "L'agent répond encore à la question précédente.",
+                    "L'agente sta ancora rispondendo alla domanda precedente.",
+                    'El agente todavía está respondiendo a la pregunta anterior.',
+                    'Agent wciąż odpowiada na poprzednie pytanie.',
+                    'Агент ще відповідає на попереднє питання.',
+                    '代理仍在回答上一个问题。',
+                ],
+                empty: [
+                    'Ask something about your smart home, for example: Is the living room light on?',
+                    'Frag etwas zu deinem Smart Home, zum Beispiel: Ist das Licht im Wohnzimmer an?',
+                    'Спросите что-нибудь о своём умном доме, например: включён ли свет в гостиной?',
+                    'Pergunte algo sobre a sua casa inteligente, por exemplo: a luz da sala está acesa?',
+                    'Vraag iets over je smart home, bijvoorbeeld: brandt het licht in de woonkamer?',
+                    'Posez une question sur votre maison connectée, par exemple : la lumière du salon est-elle allumée ?',
+                    'Chiedi qualcosa sulla tua casa intelligente, ad esempio: la luce del soggiorno è accesa?',
+                    'Pregunta algo sobre tu hogar inteligente, por ejemplo: ¿está encendida la luz del salón?',
+                    'Zapytaj o coś w swoim inteligentnym domu, na przykład: czy światło w salonie jest włączone?',
+                    'Запитайте щось про свій розумний дім, наприклад: чи увімкнене світло у вітальні?',
+                    '问一些关于智能家居的问题，例如：客厅的灯开着吗？',
+                ],
+            };
+            let lang = 'en';
+            const t = key => {
+                const texts = TEXTS[key];
+                return texts[LANGS.indexOf(lang)] || texts[0];
+            };
+
+            // admin opens the tab as "tab.html?<instance>&react=<theme>"
+            const args = (location.search || '').replace(/^\?/, '').split('&').filter(Boolean);
+            const instance = /^\d+$/.test(args[0] || '') ? args[0] : '0';
+            const theme = (args.find(a => a.startsWith('react=')) || '').slice(6);
+            const darkThemes = ['dark', 'blue', 'modernDark', 'NW', 'HA'];
+            if (theme ? darkThemes.includes(theme) : matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.body.classList.add('dark');
+            }
+
+            const $ = id => document.getElementById(id);
+            const messages = $('messages');
+            const input = $('input');
+            const sendButton = $('send');
+            const newButton = $('new');
+
+            const socket = io.connect('/', { path: `${location.pathname.split('/').slice(0, -3).join('/')}/socket.io` });
+            const target = `pi-agent.${instance}`;
+            let state = { running: true, busy: false, entries: [] };
+            let offline = false;
+            let pending = false; // a message was sent, the first answer of the server is not there yet
+            let shown = '';
+            let timer = null;
+
+            function sendTo(command, message) {
+                return new Promise(resolve => {
+                    const guard = setTimeout(() => resolve({ error: 'offline' }), 15000);
+                    socket.emit('sendTo', target, command, message || {}, answer => {
+                        clearTimeout(guard);
+                        resolve(answer || {});
+                    });
+                });
+            }
+
+            function escapeHtml(text) {
+                return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
+            function item(cls, html) {
+                const div = document.createElement('div');
+                div.className = cls;
+                div.innerHTML = html;
+                return div;
+            }
+
+            function render() {
+                $('model').textContent = state.model || '';
+                $('simulation').textContent = t('simulation');
+                $('simulation').hidden = !state.simulation;
+                const busy = state.busy || pending;
+                sendButton.disabled = busy || offline || !state.running;
+                newButton.disabled = busy || offline || !state.running;
+
+                const key = JSON.stringify([state, offline, pending]);
+                if (key === shown) {
+                    return;
+                }
+                shown = key;
+                const atBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 40;
+                messages.textContent = '';
+                if (offline) {
+                    messages.append(item('msg error', escapeHtml(t('offline'))));
+                } else if (!state.running) {
+                    messages.append(item('msg error', escapeHtml(t('notRunning'))));
+                } else if (!state.entries.length && !busy) {
+                    messages.append(item('hint', escapeHtml(t('empty'))));
+                }
+                for (const entry of state.entries || []) {
+                    if (entry.role === 'user') {
+                        messages.append(item('msg user', escapeHtml(entry.text)));
+                    } else if (entry.role === 'tool') {
+                        messages.append(item('tool', escapeHtml(entry.text)));
+                    } else {
+                        // HTML built by the adapter from escaped text (b, i, code, pre, http(s) links only)
+                        messages.append(item(`msg ${entry.role === 'notice' ? 'notice' : 'assistant'}`, entry.html));
+                    }
+                }
+                if (state.question) {
+                    const q = state.question;
+                    const text = t('question')
+                        .replace('%id', `<code>${escapeHtml(q.id)}</code>`)
+                        .replace('%val', `<code>${escapeHtml(JSON.stringify(q.val))}</code>`);
+                    const box = item('msg question', `⚠️ ${text}<div class="buttons"></div>`);
+                    for (const answer of ['yes', 'no']) {
+                        const button = document.createElement('button');
+                        button.textContent = `${answer === 'yes' ? '✅' : '❌'} ${t(answer)}`;
+                        button.onclick = () => confirmWrite(q.nonce, answer);
+                        box.querySelector('.buttons').append(button);
+                    }
+                    messages.append(box);
+                } else if (busy) {
+                    messages.append(item('thinking', escapeHtml(t('thinking'))));
+                }
+                if (state.error) {
+                    messages.append(item('msg error', escapeHtml(state.error)));
+                }
+                for (const a of messages.querySelectorAll('a')) {
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                }
+                if (atBottom || pending) {
+                    messages.scrollTop = messages.scrollHeight;
+                }
+            }
+
+            async function refresh() {
+                clearTimeout(timer);
+                const answer = await sendTo('chatHistory');
+                offline = Boolean(answer.error);
+                if (!offline) {
+                    state = answer;
+                    pending = false;
+                }
+                render();
+                // fast while the agent works, slowly otherwise (reminders, other admin sessions)
+                timer = setTimeout(refresh, state.busy || state.question ? 1500 : 10000);
+            }
+
+            async function send() {
+                const text = input.value.trim();
+                if (!text || sendButton.disabled) {
+                    return;
+                }
+                input.value = '';
+                autosize();
+                state = { ...state, error: null, entries: [...(state.entries || []), { role: 'user', text }] };
+                pending = true;
+                render();
+                const answer = await sendTo('chatSend', { text });
+                if (answer.error) {
+                    pending = false;
+                    state = { ...state, error: answer.error === 'busy' ? t('busy') : answer.error === 'notRunning' ? t('notRunning') : answer.error };
+                    render();
+                }
+                setTimeout(refresh, 500);
+            }
+
+            async function confirmWrite(nonce, answer) {
+                await sendTo('chatConfirm', { nonce, answer });
+                refresh();
+            }
+
+            function autosize() {
+                input.style.height = 'auto';
+                input.style.height = `${Math.min(input.scrollHeight + 2, 160)}px`;
+            }
+
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+                    e.preventDefault();
+                    send();
+                }
+            });
+            input.addEventListener('input', autosize);
+            sendButton.onclick = send;
+            newButton.onclick = async () => {
+                if (confirm(t('confirmNew'))) {
+                    await sendTo('chatNew');
+                    refresh();
+                }
+            };
+
+            function applyLanguage() {
+                newButton.textContent = `+ ${t('newConversation')}`;
+                sendButton.textContent = t('send');
+                input.placeholder = t('placeholder');
+                shown = '';
+                render();
+            }
+
+            socket.on('connect', () => {
+                socket.emit('getObject', 'system.config', (err, obj) => {
+                    if (!err && obj && obj.common && LANGS.includes(obj.common.language)) {
+                        lang = obj.common.language;
+                    }
+                    applyLanguage();
+                });
+                refresh();
+            });
+            socket.on('disconnect', () => {
+                offline = true;
+                render();
+            });
+            applyLanguage();
+        </script>
+    </body>
+</html>

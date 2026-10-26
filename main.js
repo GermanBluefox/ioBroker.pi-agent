@@ -10,6 +10,7 @@ const { openStore } = require('./lib/store');
 const { resolveTimeZone } = require('./lib/time');
 const { channelsFromConfig, legacyRows, chatKey, parseChatKey, migrateChats } = require('./lib/channels');
 const { createDrivers, messengerType, MESSENGER_ADAPTERS } = require('./lib/messengers');
+const { ADMIN, ADMIN_INSTRUCTIONS, historyOf, withNotices, createAdminChat } = require('./lib/admin-chat');
 const { isAllowedUser, stripPrefix, telegramRequestId } = require('./lib/telegram');
 
 /**
@@ -41,6 +42,18 @@ function parsePending(value) {
     return list
         .filter(e => e && e.requestId && e.content)
         .map(e => ({ requestId: e.requestId, content: e.content, target: chatTarget(e.target) }));
+}
+
+/**
+ * ioBroker user of a message from the admin tab: the socket of admin passes it in the options of sendTo.
+ * Without one (authentication off) all admin sessions share one conversation.
+ *
+ * @param {ioBroker.Message} obj message
+ * @returns {string} user id, e.g. "system.user.admin"
+ */
+function adminUser(obj) {
+    const user = String(Object(obj).user || '').trim();
+    return /^system\.user\.[^/]+$/.test(user) ? user : 'system.user.admin';
 }
 
 /**
@@ -78,6 +91,10 @@ class PiAgent extends utils.Adapter {
         this.channels = new Map();
         /** Sending, reading and confirming per messenger adapter (telegram, max). */
         this.drivers = createDrivers(this);
+        /** Questions, errors and reminders of the chat in the admin tab, per ioBroker user. */
+        this.adminChat = createAdminChat();
+        /** Users of the admin tab whose request runs now (requests resumed after a restart are in this.pending). */
+        this.adminRunning = new Set();
         /** "<instance>/<chat id>" -> conversation id, persisted in telegram.chats. */
         this.chats = {};
         /** Requests that were accepted but not answered yet, persisted in chat.pending. */
@@ -313,9 +330,7 @@ class PiAgent extends utils.Adapter {
                 );
             }
         }
-        if (this.channels.size === 0) {
-            return;
-        }
+        // the chats of the admin tab live in the same map, so it is read even without a messenger
         const stored = await this.getStateAsync('telegram.chats');
         const { chats, changed } = migrateChats(stored?.val ? JSON.parse(String(stored.val)) : {}, this.firstChannel());
         this.chats = chats;
@@ -324,9 +339,9 @@ class PiAgent extends utils.Adapter {
         }
         // Chats keep their own conversation; a model change in the settings reaches them too.
         for (const [key, id] of Object.entries(this.chats)) {
-            const driver = this.channels.get(parseChatKey(key, this.firstChannel()).instance)?.driver;
-            const conversation = driver ? await this.harness.conversation(id, this.context) : undefined;
-            await conversation?.configure({ model: this.model, instructions: driver.instructions }, this.context);
+            const instructions = this.instructionsOf(parseChatKey(key, this.firstChannel()).instance);
+            const conversation = instructions ? await this.harness.conversation(id, this.context) : undefined;
+            await conversation?.configure({ model: this.model, instructions }, this.context);
         }
         for (const { instance, allowed, prefix, driver } of this.channels.values()) {
             if (allowed.size === 0) {
@@ -339,23 +354,33 @@ class PiAgent extends utils.Adapter {
         }
     }
 
+    /**
+     * @param {string} instance messenger instance, or "admin" for the chat of the admin tab
+     * @returns {string | undefined} instructions of its conversations; undefined for an instance that is off
+     */
+    instructionsOf(instance) {
+        return instance === ADMIN ? ADMIN_INSTRUCTIONS : this.channels.get(instance)?.driver.instructions;
+    }
+
     /** @returns {string} first configured messenger instance, or "" (the one of chats stored by 0.0.5) */
     firstChannel() {
         return this.channels.keys().next().value || '';
     }
 
     /**
-     * Conversation of a request: one per messenger chat (per instance), the root conversation for everything else.
+     * Conversation of a request: one per messenger chat (per instance) and per user of the admin tab, the root
+     * conversation for everything else.
      *
      * @param {{ kind: string, instance?: string, chatId?: string }} target where the answer goes
      * @returns {Promise<object>} conversation handle
      */
     async conversationFor(target) {
-        if (target.kind !== 'chat') {
+        const key = this.chatKeyOf(target);
+        if (!key) {
             return this.root;
         }
-        const { instructions } = this.channels.get(target.instance).driver;
-        const key = chatKey(target.instance, target.chatId);
+        const instance = target.kind === 'admin' ? ADMIN : target.instance;
+        const instructions = this.instructionsOf(instance);
         const known = this.chats[key];
         if (known) {
             const conversation = await this.harness.conversation(known, this.context);
@@ -377,8 +402,33 @@ class PiAgent extends utils.Adapter {
                 this.log.warn(`Messenger chats could not be saved: ${e.message}`);
             });
         await this.chatsWrite;
-        this.log.info(`New conversation for chat ${target.chatId} on ${target.instance}`);
+        this.log.info(`New conversation for chat ${target.chatId} on ${instance}`);
         return created;
+    }
+
+    /**
+     * Key of a target in telegram.chats (also the key of its queue).
+     *
+     * @param {{ kind: string, instance?: string, chatId?: string }} target where the answer goes
+     * @returns {string} "<instance>/<chat id>", "admin/<user>", or "" for the root conversation
+     */
+    chatKeyOf(target) {
+        if (target.kind === 'admin') {
+            return chatKey(ADMIN, target.chatId);
+        }
+        return target.kind === 'chat' ? chatKey(target.instance, target.chatId) : '';
+    }
+
+    /**
+     * ioBroker user of the admin tab whose conversation this is.
+     *
+     * @param {unknown} conversationId conversation id
+     * @returns {string | undefined} user
+     */
+    adminUserOf(conversationId) {
+        const key = Object.keys(this.chats).find(k => String(this.chats[k]) === String(conversationId));
+        const chat = key ? parseChatKey(key, '') : undefined;
+        return chat?.instance === ADMIN ? chat.chatId : undefined;
     }
 
     /**
@@ -403,6 +453,10 @@ class PiAgent extends utils.Adapter {
      * @returns {Promise<string>} "yes", "no", "timeout" or "unavailable" (no messenger chat for this conversation)
      */
     async requestConfirmation({ conversationId, id, val }) {
+        const user = this.adminUserOf(conversationId);
+        if (user) {
+            return this.adminChat.confirm(user, id, val);
+        }
         const chat = this.chatOf(conversationId);
         if (!chat) {
             this.log.warn(`Confirmation for ${id} needed, but the request did not come from a messenger chat`);
@@ -423,6 +477,12 @@ class PiAgent extends utils.Adapter {
      * @param {string} text reminder text
      */
     async deliverReminder(conversationId, text) {
+        const user = this.adminUserOf(conversationId);
+        if (user) {
+            this.log.info(`Reminder due for the admin chat of ${user}`);
+            this.adminChat.addNotice(user, `⏰ ${text}`);
+            return;
+        }
         const chat = this.chatOf(conversationId);
         const target = chat ? { kind: 'chat', ...chat } : { kind: 'state' };
         this.log.info(`Reminder due${chat ? ` for chat ${chat.chatId} on ${chat.instance}` : ''}`);
@@ -489,7 +549,7 @@ class PiAgent extends utils.Adapter {
             await this.savePending();
         })();
         // One queue per conversation: a chat waits for its own earlier request, not for other chats.
-        const key = target.kind === 'chat' ? chatKey(target.instance, target.chatId) : 'root';
+        const key = this.chatKeyOf(target) || 'root';
         const previous = this.queues.get(key) || Promise.resolve();
         const run = Promise.all([admitted, previous]).then(async () => {
             try {
@@ -565,6 +625,10 @@ class PiAgent extends utils.Adapter {
                 return;
             }
             this.log.error(`Request failed: ${e.message}`);
+            if (entry.target.kind === 'admin') {
+                this.adminChat.setError(String(entry.target.chatId), e.message);
+                return;
+            }
             await this.deliver(entry.target, `Error: ${e.message}`);
         }
     }
@@ -574,6 +638,9 @@ class PiAgent extends utils.Adapter {
      * @param {string} text answer or error text
      */
     async deliver(target, text) {
+        if (target.kind === 'admin') {
+            return; // the admin tab reads the answer from the conversation
+        }
         if (target.kind === 'chat') {
             this.channels.get(target.instance).driver.send(target.instance, target.chatId, text);
             return;
@@ -663,6 +730,72 @@ class PiAgent extends utils.Adapter {
         await this.process({ requestId, content, target: { kind: 'chat', instance, chatId } });
     }
 
+    /**
+     * Commands of the chat in the admin tab (admin/tab.html). The page polls chatHistory while a request runs.
+     *
+     * @param {string} command chatHistory, chatSend, chatConfirm or chatNew
+     * @param {string} user ioBroker user of the admin session
+     * @param {{ text?: unknown, nonce?: unknown, answer?: unknown }} message message of the page
+     * @returns {Promise<object>} answer for the page
+     */
+    async onAdminChat(command, user, message) {
+        const key = chatKey(ADMIN, user);
+        const busy = () =>
+            this.adminRunning.has(user) ||
+            this.pending.some(p => p.target.kind === 'admin' && p.target.chatId === user);
+        if (command === 'chatSend') {
+            const text = String(message.text || '').trim();
+            if (!this.root) {
+                return { error: 'notRunning' };
+            }
+            if (!text || busy()) {
+                return { error: text ? 'busy' : 'empty' };
+            }
+            this.adminChat.setError(user, null);
+            this.adminRunning.add(user);
+            const requestId = `admin-${crypto.randomBytes(8).toString('hex')}`;
+            void this.process({ requestId, content: text, target: { kind: 'admin', chatId: user } }).finally(() =>
+                this.adminRunning.delete(user),
+            );
+            return { accepted: true };
+        }
+        if (command === 'chatConfirm') {
+            return { ok: this.adminChat.answer(user, message.nonce, message.answer) };
+        }
+        if (command === 'chatNew') {
+            if (busy()) {
+                return { error: 'busy' };
+            }
+            delete this.chats[key];
+            await this.setStateAsync('telegram.chats', { val: JSON.stringify(this.chats), ack: true });
+            this.adminChat.clear(user);
+            this.log.info(`Admin chat of ${user}: new conversation`);
+            return { ok: true };
+        }
+        // chatHistory
+        let entries = [];
+        const conversation = this.chats[key] ? await this.harness?.conversation(this.chats[key], this.context) : null;
+        if (conversation) {
+            const view = await conversation.viewState(this.context);
+            try {
+                entries = historyOf(view.value.entries);
+            } finally {
+                view.dispose?.();
+            }
+        }
+        const notices = this.adminChat.notices(user);
+        return {
+            running: Boolean(this.root),
+            model: this.model ? `${this.model.provider}/${this.model.modelId}` : '',
+            simulation: Boolean(this.config.dryRun),
+            user,
+            busy: busy(),
+            question: this.adminChat.question(user),
+            error: this.adminChat.error(user),
+            entries: withNotices(entries, notices),
+        };
+    }
+
     /** @param {ioBroker.Message} obj message from a script or another adapter */
     async onMessage(obj) {
         if (obj?.command === 'listModels') {
@@ -685,6 +818,18 @@ class PiAgent extends utils.Adapter {
                 const { rows, added } = await this.writeRulesWithInstances(Object(obj.message).writeRules);
                 answer = { native: { writeRules: rows } };
                 this.log.info(`Write permissions: ${added} installed instance(s) added to the table (not saved yet)`);
+            } catch (e) {
+                answer = { error: e.message };
+            }
+            if (obj.callback) {
+                this.sendTo(obj.from, obj.command, answer, obj.callback);
+            }
+            return;
+        }
+        if (['chatHistory', 'chatSend', 'chatConfirm', 'chatNew'].includes(String(obj?.command))) {
+            let answer;
+            try {
+                answer = await this.onAdminChat(obj.command, adminUser(obj), Object(obj.message));
             } catch (e) {
                 answer = { error: e.message };
             }

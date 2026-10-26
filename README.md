@@ -74,6 +74,18 @@ Start with simulation mode on, watch the log, and only then switch it off.
 
 ## Usage
 
+### Chat in the admin
+
+The menu entry **Pi Agent** on the left side of the admin opens a chat with the agent:
+
+- Every ioBroker user has a conversation of their own; **New conversation** starts over.
+- The answer is shown formatted, with the tool calls of the agent above it.
+- A write on the "Confirmation required" list is asked in the chat with ✅/❌ buttons.
+- A request keeps running when the page is closed; the answer is in the chat when it is opened again.
+- Reminders of the conversation appear in the chat (kept until the adapter restarts).
+
+### States and scripts
+
 Write a text to `pi-agent.0.chat.input`. The answer appears in `pi-agent.0.chat.answer`. From a script:
 
 ```js
@@ -90,8 +102,8 @@ middle, they continue on the next start. The answer of a request from `chat.inpu
 
 ### Confirmation, reminders, history, usage
 
-- **Confirmation:** a write to a state on the "Confirmation required" list is asked in the messenger chat of the
-  conversation with ✅/❌ buttons. Only "Yes" lets it happen; "No", no answer (10 minutes), or a request that did not
+- **Confirmation:** a write to a state on the "Confirmation required" list is asked in the messenger chat or in the
+  admin chat of the conversation with ✅/❌ buttons. Only "Yes" lets it happen; "No", no answer (10 minutes), or a request that did not
   come from a messenger blocks it. The answer is stored with the call, so a restart does not ask twice. In simulation mode nothing is
   written, so nothing is asked.
 - **Reminders:** `remind_me` sends a message later (at most 7 days ahead) to the chat of the conversation, or to
@@ -146,6 +158,10 @@ Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Avai
     ### **WORK IN PROGRESS**
 -->
 
+### 0.2.0 (2026-10-26)
+
+- Chat in the admin: the menu entry "Pi Agent" opens a chat with the agent, one conversation per ioBroker user, with tool calls, confirmation buttons and reminders
+
 ### 0.1.0 (2026-10-26)
 
 - Messengers: a table with one row per bot (active, instance, allowed users, prefix), for several Telegram instances and the MAX messenger (adapter `max`); the Telegram settings of 0.0.5 are moved into it at the first start
@@ -173,12 +189,6 @@ Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Avai
 - Conversations are stored in SQLite instead of JSONL, which kept the whole history in memory
 - Every conversation has its own queue: Telegram chats no longer wait for each other
 - An answer that would give broken HTML is sent to Telegram as plain text; a quote in a link URL is escaped
-
-### 0.0.2 (2026-10-25)
-
-- Telegram answers keep their formatting: Markdown of the model is sent as Telegram HTML (bold, italic, code, links;
-  tables as a monospace block), and Telegram chats are asked for short answers without tables
-- Released through the CI workflow with npm provenance (trusted publishing)
 
 Older changelog entries can be found in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 

@@ -413,6 +413,19 @@ const DESC = [
 ];
 /** common.news per version, newest first; the repository builder keeps at most seven. */
 const NEWS = {};
+NEWS['0.2.0'] = [
+    'Chat in the admin: the menu entry "Pi Agent" opens a chat with the agent, one conversation per ioBroker user, with tool calls, confirmation buttons and reminders',
+    'Chat im Admin: Der Menüpunkt „Pi Agent“ öffnet einen Chat mit dem Agenten, eine Unterhaltung pro ioBroker-Benutzer, mit Werkzeugaufrufen, Bestätigungs-Schaltflächen und Erinnerungen',
+    'Чат в админке: пункт меню «Pi Agent» открывает чат с агентом, отдельная беседа для каждого пользователя ioBroker, с вызовами инструментов, кнопками подтверждения и напоминаниями',
+    'Chat no admin: a entrada de menu "Pi Agent" abre um chat com o agente, uma conversa por utilizador do ioBroker, com chamadas de ferramentas, botões de confirmação e lembretes',
+    'Chat in de admin: het menu-item "Pi Agent" opent een chat met de agent, één gesprek per ioBroker-gebruiker, met toolaanroepen, bevestigingsknoppen en herinneringen',
+    "Chat dans l'admin : l'entrée de menu « Pi Agent » ouvre une discussion avec l'agent, une conversation par utilisateur ioBroker, avec les appels d'outils, des boutons de confirmation et des rappels",
+    'Chat nell\'admin: la voce di menu "Pi Agent" apre una chat con l\'agente, una conversazione per ogni utente ioBroker, con chiamate agli strumenti, pulsanti di conferma e promemoria',
+    'Chat en el admin: la entrada de menú "Pi Agent" abre un chat con el agente, una conversación por usuario de ioBroker, con llamadas a herramientas, botones de confirmación y recordatorios',
+    'Czat w panelu admina: pozycja menu „Pi Agent” otwiera czat z agentem, jedna rozmowa na użytkownika ioBroker, z wywołaniami narzędzi, przyciskami potwierdzenia i przypomnieniami',
+    'Чат в адмінці: пункт меню «Pi Agent» відкриває чат з агентом, окрема розмова для кожного користувача ioBroker, з викликами інструментів, кнопками підтвердження та нагадуваннями',
+    '管理界面中的聊天：菜单项“Pi Agent”打开与代理的聊天，每个 ioBroker 用户一个对话，显示工具调用、确认按钮和提醒',
+];
 NEWS['0.1.0'] = [
     'Several Telegram bots and the MAX messenger; table of write permissions with a button for the installed instances; settings in tabs; "dry run" is now "simulation mode"',
     'Mehrere Telegram-Bots und der MAX-Messenger; Tabelle der Schreibrechte mit einer Schaltfläche für die installierten Instanzen; Einstellungen in Reitern; „Probelauf“ heißt jetzt „Simulationsmodus“',
