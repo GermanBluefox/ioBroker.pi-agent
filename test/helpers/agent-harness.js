@@ -118,6 +118,40 @@ function fakeAdapterCore(hooks) {
         async subscribeForeignObjectsAsync(pattern) {
             this.objectSubscriptions = [...(this.objectSubscriptions || []), pattern];
         }
+        async setForeignObjectNotExistsAsync(id, obj) {
+            if (!this.db.objects[id]) {
+                await this.setForeignObjectAsync(id, obj);
+            }
+        }
+        // File storage: kept in memory, keyed "<meta id>/<path>".
+        async writeFileAsync(metaId, file, data) {
+            if (!this.db.objects[metaId]) {
+                throw new Error(`${metaId} is not a meta object`);
+            }
+            this.files = { ...this.files, [`${metaId}/${file}`]: Buffer.from(data) };
+        }
+        async readFileAsync(metaId, file) {
+            const data = this.files?.[`${metaId}/${file}`];
+            if (!data) {
+                throw new Error('Not exists');
+            }
+            return { file: data, mimeType: 'application/octet-stream' };
+        }
+        async readDirAsync(metaId, dir) {
+            const prefix = `${metaId}/${dir}/`;
+            const names = Object.keys(this.files || {}).filter(key => key.startsWith(prefix));
+            if (names.length === 0) {
+                throw new Error('Not exists');
+            }
+            return names.map(key => ({
+                file: key.slice(prefix.length),
+                isDir: false,
+                stats: { size: this.files[key].length },
+            }));
+        }
+        async delFileAsync(metaId, file) {
+            delete this.files[`${metaId}/${file}`];
+        }
         restart() {
             this.restarted = (this.restarted || 0) + 1;
         }

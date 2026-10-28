@@ -44,11 +44,11 @@ test('nameText: handles translated names', () => {
 	assert.equal(nameText(undefined), '');
 });
 
-test('io-package: the API key is declared encrypted and protected at the top level', () => {
+test('io-package: the API key and the SFTP password are declared encrypted and protected at the top level', () => {
 	const io = require('../io-package.json');
 	// js-controller reads these two lists from the top level only; inside "common" they are ignored.
-	assert.deepEqual(io.encryptedNative, ['apiKey']);
-	assert.deepEqual(io.protectedNative, ['apiKey']);
+	assert.deepEqual(io.encryptedNative, ['apiKey', 'remotePassword']);
+	assert.deepEqual(io.protectedNative, ['apiKey', 'remotePassword']);
 	assert.equal('encryptedNative' in io.common, false);
 	assert.equal('protectedNative' in io.common, false);
 });
@@ -82,6 +82,7 @@ test('jsonConfig: only component types the admin knows', () => {
 		'panel',
 		'sendTo',
 		'credential', // admin 8: a credential of the central credential store
+		'selectSendTo',
 	]);
 	for (const [key, item] of allItems(config.items)) {
 		assert.ok(known.has(item.type), `${key} uses unknown type "${item.type}"`);
