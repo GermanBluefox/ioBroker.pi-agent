@@ -31,7 +31,7 @@ before it runs, so an interrupted request continues after the adapter starts aga
 ## Requirements
 
 - Node.js 22.19.0 or newer, js-controller 6.0.11 or newer, admin 8.0.0 or newer.
-- An API key of the chosen provider: Anthropic, OpenAI, DeepSeek or Google Gemini, or an OpenAI-compatible server (a
+- An API key of the chosen provider: Anthropic, OpenAI, DeepSeek, Google Gemini or OpenRouter, or an OpenAI-compatible server (a
   local one such as Ollama needs no key). Or the system-wide AI settings of admin (System settings, tab "AI"), which
   name provider, model and key once for the whole system.
 - The adapter runs as its own process (not in compact mode). It keeps long-running model requests and a conversation
@@ -45,7 +45,7 @@ The settings have three tabs: **General**, **Write permissions** and **Messenger
 | Setting         | Meaning                                                                          |
 | --------------- | -------------------------------------------------------------------------------- |
 | Key source      | **System-wide AI settings of admin** (default for new instances): provider, model, base URL and key come from the system settings of admin, tab "AI" (object `system.ai`); a change there restarts the instance. **Store the key in the adapter** or **Central credential store**: the settings below. An instance with neither a key nor an OpenAI-compatible server of its own also takes the system-wide settings. |
-| Provider, Model | The language model. The model field lists the models of the chosen provider (the instance must be running for the list); any other model ID can be typed in. Empty: the default of the provider (`claude-sonnet-5-5`, `gpt-6-sol`, `deepseek-flash`, `gemini-3.5-flash`). |
+| Provider, Model | The language model. The model field lists the models of the chosen provider (the instance must be running for the list); any other model ID can be typed in. Empty: the default of the provider (`claude-sonnet-5-5`, `gpt-6-sol`, `deepseek-flash`, `gemini-3.5-flash`, `anthropic/claude-sonnet-5.5`). |
 | Base URL        | Only for **OpenAI-compatible (own URL)**: the endpoint of the server, see below. |
 | API key         | **Store the key in the adapter** (the field "API key", stored encrypted) or **Central credential store**: a credential of the central credential store of admin 8, chosen in "API key credential". A changed credential restarts the instance with the new key. |
 | Test connection | Asks the model one short question with the values of the form, saved or not, and shows the answer or the error. The instance must be running. |
@@ -199,7 +199,7 @@ Select **OpenAI-compatible (own URL)** for any server with the OpenAI chat compl
 ### **WORK IN PROGRESS**
 
 - The system-wide AI settings of admin (System settings, tab "AI") can be used: new key source, default for new instances; an instance without a key of its own takes them too
-- Google Gemini as provider
+- Google Gemini and OpenRouter as providers (OpenRouter: one key for the models of many vendors, model IDs as `vendor/model`)
 - sendTo `ask` accepts `conversation` and `instructions`: a conversation of its own per caller conversation, e.g. one per room of a voice assistant
 
 ### 0.3.0 (2026-10-28)

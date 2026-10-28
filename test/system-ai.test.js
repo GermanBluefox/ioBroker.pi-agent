@@ -34,6 +34,17 @@ test('keySourceOf / usesSystemAi: explicit "system", or an instance without any 
     assert.equal(usesSystemAi({ keySource: 'central', credentialId: '' }), false, 'an explicit choice');
 });
 
+test('every provider of system.ai maps to a provider this adapter can load', async () => {
+    const { PROVIDERS, loadProvider } = require('../lib/providers');
+    for (const name of ['openai', 'anthropic', 'gemini', 'deepseek', 'openrouter', 'custom']) {
+        const form = systemAiForm({ provider: name, baseUrl: 'http://ollama:11434/v1', model: 'm' });
+        assert.ok(form && form.provider in PROVIDERS, `${name} -> ${form?.provider}`);
+        if (form.provider !== 'custom') {
+            await loadProvider(form.provider); // throws for a name pi-ai does not know
+        }
+    }
+});
+
 test('systemAiForm: provider names of admin, the base URL only for the custom server', () => {
     assert.equal(systemAiForm(undefined), null);
     assert.equal(systemAiForm({ provider: 'mistral' }), null);

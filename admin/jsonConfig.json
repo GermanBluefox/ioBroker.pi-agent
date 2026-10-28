@@ -61,6 +61,10 @@
 							"value": "google"
 						},
 						{
+							"label": "OpenRouter",
+							"value": "openrouter"
+						},
+						{
 							"label": "OpenAI-compatible (own URL)",
 							"value": "custom"
 						}
