@@ -31,6 +31,7 @@ const {
 } = require('./lib/backup');
 const { autoBackupDelay } = require('./lib/backup-schedule');
 const { queuedPurges, queuePurge, purgeQueued } = require('./lib/purge');
+const { createMemory } = require('./lib/memory');
 const {
     copyBackupToRemote,
     settingsForConnectionTest,
@@ -174,6 +175,12 @@ class PiAgent extends utils.Adapter {
         this.drivers = createDrivers(this);
         /** Questions, errors and reminders of the chat in the admin tab, per ioBroker user. */
         this.adminChat = createAdminChat(this);
+        /** Long-term memory shared by all conversations (lib/memory.js). */
+        this.memory = createMemory(this, () => this.config.longTermMemory !== false);
+        /** Instances with "Restart allowed" in the write permissions. */
+        this.restartList = [];
+        /** How long a restarted instance may take to run again. */
+        this.restartWaitMs = 45_000;
         /** Users of the admin tab whose request runs now (requests resumed after a restart are in this.pending). */
         this.adminRunning = new Set();
         /** "<instance>/<chat id>" -> conversation id, persisted in telegram.chats. */
@@ -209,8 +216,12 @@ class PiAgent extends utils.Adapter {
             await ensureObjects(this);
             // a backup chosen for restore replaces the store before anything opens it
             await this.applyRestore();
+            await this.memory.load();
+            // the user may edit the facts in the state memory.list
+            await this.subscribeStatesAsync('memory.list');
             // the table "Write permissions" and the regular expressions of the expert fields both count
             const rules = parseWriteRules(this.config.writeRules);
+            this.restartList = rules.restart;
             this.allowlist = [
                 ...rules.allow,
                 ...parseAllowlist(this.config.writeAllow, (line, msg) =>
@@ -362,7 +373,7 @@ class PiAgent extends utils.Adapter {
      * Instances of admin and system tools (adapter type "general" or "storage") and the agent itself are left out.
      *
      * @param {unknown} rows rows of the admin page, not saved yet
-     * @returns {Promise<{ rows: Array<{ scope: string, write: boolean, confirm: boolean }>, added: number }>} table
+     * @returns {Promise<{ rows: Array<{ scope: string, write: boolean, confirm: boolean, restart?: boolean }>, added: number }>} table
      */
     async writeRulesWithInstances(rows) {
         const table = (Array.isArray(rows) ? rows : []).filter(r => r && typeof r === 'object');
@@ -376,7 +387,7 @@ class PiAgent extends utils.Adapter {
             .map(row => row.id.slice('system.adapter.'.length))
             .filter(instance => instance !== this.namespace && !present.has(instance))
             .sort()
-            .map(instance => ({ scope: instance, write: false, confirm: false }));
+            .map(instance => ({ scope: instance, write: false, confirm: false, restart: false }));
         return { rows: [...table, ...added], added: added.length };
     }
 
@@ -523,6 +534,9 @@ class PiAgent extends utils.Adapter {
                 requestConfirmation: request => this.requestConfirmation(request),
                 deliverReminder: (conversationId, text) => this.deliverReminder(conversationId, text),
                 historyInstance: () => this.historyInstance(),
+                restartList: this.restartList,
+                restartInstance: instance => this.restartInstance(instance),
+                memory: this.memory,
             })),
         );
 
@@ -695,15 +709,16 @@ class PiAgent extends utils.Adapter {
     }
 
     /**
-     * Ask the user in the messenger chat of the conversation whether a write may happen.
+     * Ask the user in the chat of the conversation whether a write (or the restart of an instance) may happen.
      *
-     * @param {{ conversationId: unknown, id: string, val: unknown }} request the write to confirm
+     * @param {{ conversationId: unknown, id: string, val: unknown, action?: string }} request the write to confirm;
+     *     with action "restart", id is the instance to restart
      * @returns {Promise<string>} "yes", "no", "timeout" or "unavailable" (no messenger chat for this conversation)
      */
-    async requestConfirmation({ conversationId, id, val }) {
+    async requestConfirmation({ conversationId, id, val, action }) {
         const user = this.adminUserOf(conversationId);
         if (user) {
-            return this.adminChat.confirm(user, id, val);
+            return this.adminChat.confirm(user, id, val, action);
         }
         const chat = this.chatOf(conversationId);
         if (!chat) {
@@ -711,7 +726,7 @@ class PiAgent extends utils.Adapter {
             return 'unavailable';
         }
         try {
-            return await this.channels.get(chat.instance).driver.confirm(chat.instance, chat.chatId, id, val);
+            return await this.channels.get(chat.instance).driver.confirm(chat.instance, chat.chatId, id, val, action);
         } catch (e) {
             this.log.warn(`No answer to the confirmation for ${id}: ${e.message}`);
             return 'timeout';
@@ -840,7 +855,7 @@ class PiAgent extends utils.Adapter {
         } catch {
             // an unreadable map is not part of the backup
         }
-        const { data, rawSize } = createSnapshot(this.storeFile(), { chats });
+        const { data, rawSize } = createSnapshot(this.storeFile(), { chats, memory: this.memory.list() });
         // meta.user: ioBroker and BackItUp backups take the files of the mount point along
         await this.setForeignObjectNotExistsAsync(this.storageId(), {
             type: 'meta',
@@ -1080,9 +1095,49 @@ class PiAgent extends utils.Adapter {
         }
         await this.setStateAsync('telegram.chats', { val: JSON.stringify(restored.chats), ack: true });
         await this.setStateAsync('chat.pending', { val: '', ack: true });
+        if (restored.memory) {
+            await this.memory.replace(restored.memory);
+        }
         this.log.info(
             `Conversations restored from a backup (${Object.keys(restored.chats).length} chat(s)); waiting requests were dropped`,
         );
+    }
+
+    /**
+     * Restart an instance the way the restart button of admin does (the instance object is written, js-controller
+     * restarts it) and wait until it runs again. The guard in lib/tools.js has checked the permission and the
+     * confirmation of the user.
+     *
+     * @param {string} instance e.g. "telegram.0"
+     * @returns {Promise<string>} what happened, for the model
+     */
+    async restartInstance(instance) {
+        const id = `system.adapter.${instance}`;
+        const obj = await this.getForeignObjectAsync(id);
+        if (!obj || obj.type !== 'instance') {
+            throw new Error(`There is no instance ${instance}`);
+        }
+        if (!obj.common?.enabled) {
+            return `${instance} is switched off; the agent does not switch instances on. Tell the user.`;
+        }
+        const started = Date.now();
+        await this.extendForeignObjectAsync(id, { common: { enabled: true } });
+        if (obj.common.mode !== 'daemon') {
+            return `${instance} was restarted (mode "${obj.common.mode}": it runs on its schedule and is not alive between runs).`;
+        }
+        // running again: alive, with an uptime that began after the restart
+        while (Date.now() - started < this.restartWaitMs && !this.stopping) {
+            await new Promise(resolve => this.setTimeout(resolve, 1000));
+            const [alive, uptime] = await Promise.all([
+                this.getForeignStateAsync(`${id}.alive`),
+                this.getForeignStateAsync(`${id}.uptime`),
+            ]);
+            const seconds = (Date.now() - started) / 1000;
+            if (alive?.val === true && uptime && Number(uptime.val) <= seconds + 1) {
+                return `${instance} was restarted and runs again (after ${Math.round(seconds)} s).`;
+            }
+        }
+        return `The restart of ${instance} was sent, but it did not report running again within ${Math.round(this.restartWaitMs / 1000)} s. Tell the user to look at the log of ${instance}.`;
     }
 
     /** Publish the token use and cost of all conversations in usage.*. */
@@ -1267,6 +1322,12 @@ class PiAgent extends utils.Adapter {
         const instance = id.endsWith('.communicate.request') ? id.slice(0, -'.communicate.request'.length) : '';
         if (this.channels.has(instance)) {
             return this.onChatMessage(instance, state);
+        }
+        if (id === `${this.namespace}.memory.list` && state && !state.ack) {
+            // the user edited the facts: take them over (invalid entries are dropped) and confirm with ack
+            await this.memory.replace(state.val);
+            this.log.info(`Long-term memory edited: ${this.memory.list().length} fact(s)`);
+            return;
         }
         if (!state || state.ack || id !== `${this.namespace}.chat.input` || !state.val) {
             return;

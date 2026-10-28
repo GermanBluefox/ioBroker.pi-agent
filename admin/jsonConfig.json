@@ -167,6 +167,17 @@
 					"lg": 12,
 					"xl": 12
 				},
+				"longTermMemory": {
+					"type": "checkbox",
+					"label": "Long-term memory",
+					"help": "The agent keeps facts you tell it to remember (tools remember and forget) across all conversations, in the state memory.list",
+					"default": true,
+					"xs": 12,
+					"sm": 12,
+					"md": 12,
+					"lg": 12,
+					"xl": 12
+				},
 				"instructions": {
 					"type": "text",
 					"label": "Instructions",
@@ -212,7 +223,7 @@
 			"items": {
 				"writeRulesHelp": {
 					"type": "staticText",
-					"text": "One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed.",
+					"text": "One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed. \"Restart allowed\" counts only for a whole instance (not pi-agent or admin); every restart is confirmed in the chat.",
 					"newLine": true,
 					"xs": 12,
 					"sm": 12,
@@ -248,23 +259,31 @@
 							"type": "text",
 							"attr": "scope",
 							"title": "Scope",
-							"width": "50%",
+							"width": "40%",
 							"default": ""
 						},
 						{
 							"type": "checkbox",
 							"attr": "write",
 							"title": "Write allowed",
-							"width": "25%",
+							"width": "20%",
 							"default": false
 						},
 						{
 							"type": "checkbox",
 							"attr": "confirm",
 							"title": "Confirmation required",
-							"width": "25%",
+							"width": "20%",
 							"default": false,
 							"disabled": "!data.write"
+						},
+						{
+							"type": "checkbox",
+							"attr": "restart",
+							"title": "Restart allowed",
+							"width": "20%",
+							"default": false,
+							"disabled": "!/^[a-z0-9][a-z0-9_-]*\\.\\d+$/i.test(String(data.scope || '').trim()) || /^(pi-agent|admin)\\./i.test(String(data.scope || '').trim())"
 						}
 					]
 				},

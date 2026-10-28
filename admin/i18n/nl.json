@@ -20,7 +20,6 @@
 	"Prefix": "Voorvoegsel",
 	"General": "Algemeen",
 	"Write permissions": "Schrijfrechten",
-	"One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed.": "Eén regel per bereik: een instantie (hm-rpc.0) of een object-ID met alles daaronder, of een patroon met * (hm-rpc.0.*.STATE). States die bij geen enkele regel passen, kunnen alleen gelezen worden. \"Bevestiging vereist\" geldt alleen waar schrijven is toegestaan.",
 	"Add installed instances": "Geïnstalleerde instanties toevoegen",
 	"Scope": "Bereik",
 	"Write allowed": "Schrijven toegestaan",
@@ -78,5 +77,9 @@
 	"After a new installation of ioBroker: enter the SFTP settings above, switch the copy on and save. Then choose a backup on the server and restore it. The file is fetched into the storage folder and the conversations are replaced; the current conversations are saved first as a safety copy.": "Na een nieuwe installatie van ioBroker: vul hierboven de SFTP-instellingen in, schakel de kopie in en sla op. Kies dan een back-up op de server en herstel die. Het bestand wordt in de opslagmap gehaald en de gesprekken worden vervangen; de huidige gesprekken worden eerst als veiligheidskopie opgeslagen.",
 	"The conversations of the agent are replaced by the chosen backup from the server and the instance restarts. The current conversations are saved first as a safety copy. Continue?": "De gesprekken van de agent worden vervangen door de gekozen back-up van de server en de instantie herstart. De huidige gesprekken worden eerst als veiligheidskopie opgeslagen. Doorgaan?",
 	"No API key entered: the system-wide AI settings of admin (System settings, tab \"AI\") are used.": "Geen API-sleutel ingevoerd: de systeembrede AI-instellingen van admin (systeeminstellingen, tabblad \"AI\") worden gebruikt.",
+	"One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed. \"Restart allowed\" counts only for a whole instance (not pi-agent or admin); every restart is confirmed in the chat.": "Eén regel per bereik: een instantie (hm-rpc.0) of een object-ID met alles daaronder, of een patroon met * (hm-rpc.0.*.STATE). States die bij geen enkele regel passen, kunnen alleen gelezen worden. \"Bevestiging vereist\" geldt alleen waar schrijven is toegestaan. \"Herstart toegestaan\" geldt alleen voor een hele instantie (niet pi-agent of admin); elke herstart wordt in de chat bevestigd.",
+	"Restart allowed": "Herstart toegestaan",
+	"Long-term memory": "Langetermijngeheugen",
+	"The agent keeps facts you tell it to remember (tools remember and forget) across all conversations, in the state memory.list": "De agent bewaart feiten die hij moet onthouden (tools remember en forget) over alle gesprekken heen, in de state memory.list",
 	"Allowed users": "Toegestane gebruikers"
 }

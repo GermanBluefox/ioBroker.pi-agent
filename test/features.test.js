@@ -288,8 +288,8 @@ test('sendTo "importInstances" adds a row for every installed instance that has 
         native: {
             writeRules: [
                 { scope: 'shelly.0', write: true, confirm: false },
-                { scope: 'hm-rpc.0', write: false, confirm: false },
-                { scope: 'javascript.0', write: false, confirm: false },
+                { scope: 'hm-rpc.0', write: false, confirm: false, restart: false },
+                { scope: 'javascript.0', write: false, confirm: false, restart: false },
             ],
         },
     });

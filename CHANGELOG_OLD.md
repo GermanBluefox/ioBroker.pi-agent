@@ -1,5 +1,13 @@
 # Older Changelog
 
+### 0.3.0 (2026-10-28)
+
+- OpenAI-compatible servers with an own base URL (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...)
+- The API key can come from the central credential store of admin 8; a changed credential restarts the instance
+- Button "Test connection" in the settings
+- Time zone: a list of all time zones with their UTC offset
+- Requires admin 8.0.0 or newer
+
 ### 0.2.0 (2026-10-26)
 
 - Chat in the admin: the menu entry "Pi Agent" opens a chat with the agent, one conversation per ioBroker user, with tool calls, confirmation buttons and reminders

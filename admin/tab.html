@@ -296,6 +296,7 @@
                 yes: ['Yes', 'Ja', 'Да', 'Sim', 'Ja', 'Oui', 'Sì', 'Sí', 'Tak', 'Так', '是'],
                 no: ['No', 'Nein', 'Нет', 'Não', 'Nee', 'Non', 'No', 'No', 'Nie', 'Ні', '否'],
                 question: ['Set %id to %val?', '%id auf %val setzen?', 'Установить %id в %val?', 'Definir %id como %val?', '%id op %val zetten?', 'Mettre %id à %val ?', 'Impostare %id a %val?', '¿Poner %id a %val?', 'Ustawić %id na %val?', 'Встановити %id у %val?', '将 %id 设置为 %val？'],
+                questionRestart: ['Restart instance %id?', 'Instanz %id neu starten?', 'Перезапустить инстанс %id?', 'Reiniciar a instância %id?', 'Instantie %id herstarten?', "Redémarrer l'instance %id ?", "Riavviare l'istanza %id?", '¿Reiniciar la instancia %id?', 'Zrestartować instancję %id?', 'Перезапустити інстанс %id?', '重启实例 %id？'],
                 simulation: ['Simulation mode', 'Simulationsmodus', 'Режим симуляции', 'Modo de simulação', 'Simulatiemodus', 'Mode simulation', 'Modalità simulazione', 'Modo de simulación', 'Tryb symulacji', 'Режим симуляції', '模拟模式'],
                 notRunning: [
                     'The agent is not running. Enter the API key in the instance settings.',
@@ -518,7 +519,7 @@
                 }
                 if (state.question) {
                     const q = state.question;
-                    const text = t('question')
+                    const text = t(q.action === 'restart' ? 'questionRestart' : 'question')
                         .replace('%id', `<code>${escapeHtml(q.id)}</code>`)
                         .replace('%val', `<code>${escapeHtml(JSON.stringify(q.val))}</code>`);
                     const box = item('msg question', `⚠️ ${text}<div class="buttons"></div>`);

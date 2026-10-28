@@ -20,7 +20,6 @@
 	"Prefix": "前缀",
 	"General": "常规",
 	"Write permissions": "写入权限",
-	"One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed.": "每个范围一行：一个实例（hm-rpc.0）或一个对象 ID 及其下的所有内容，或带 * 的模式（hm-rpc.0.*.STATE）。不匹配任何行的状态只能读取。“需要确认”仅在允许写入的地方生效。",
 	"Add installed instances": "添加已安装的实例",
 	"Scope": "范围",
 	"Write allowed": "允许写入",
@@ -78,5 +77,9 @@
 	"After a new installation of ioBroker: enter the SFTP settings above, switch the copy on and save. Then choose a backup on the server and restore it. The file is fetched into the storage folder and the conversations are replaced; the current conversations are saved first as a safety copy.": "重新安装 ioBroker 后：在上方填写 SFTP 设置，开启复制并保存。然后在服务器上选择一个备份并恢复。文件会被取回到存储文件夹并替换对话；当前对话会先保存为安全副本。",
 	"The conversations of the agent are replaced by the chosen backup from the server and the instance restarts. The current conversations are saved first as a safety copy. Continue?": "代理的对话将被服务器上所选的备份替换，实例将重启。当前对话会先保存为安全副本。继续吗？",
 	"No API key entered: the system-wide AI settings of admin (System settings, tab \"AI\") are used.": "未输入 API 密钥：将使用 admin 的系统级 AI 设置（系统设置，“AI”选项卡）。",
+	"One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed. \"Restart allowed\" counts only for a whole instance (not pi-agent or admin); every restart is confirmed in the chat.": "每个范围一行：一个实例（hm-rpc.0）或一个对象 ID 及其下的所有内容，或带 * 的模式（hm-rpc.0.*.STATE）。不匹配任何行的状态只能读取。“需要确认”仅在允许写入的地方生效。“允许重启”仅适用于整个实例（不包括 pi-agent 和 admin）；每次重启都需在聊天中确认。",
+	"Restart allowed": "允许重启",
+	"Long-term memory": "长期记忆",
+	"The agent keeps facts you tell it to remember (tools remember and forget) across all conversations, in the state memory.list": "代理会在所有对话中保留你让它记住的事实（工具 remember 和 forget），保存在状态 memory.list 中",
 	"Allowed users": "允许的用户"
 }

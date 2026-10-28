@@ -49,8 +49,9 @@ The settings have four tabs: **General**, **Write permissions**, **Messengers** 
 | Base URL        | Only for **OpenAI-compatible (own URL)**: the endpoint of the server, see below. |
 | API key         | **Store the key in the adapter** (the field "API key", stored encrypted) or **Central credential store**: a credential of the central credential store of admin 8, chosen in "API key credential". A changed credential restarts the instance with the new key. |
 | Test connection | Asks the model one short question with the values of the form, saved or not, and shows the answer or the error. The instance must be running. |
-| Simulation mode (nothing is switched) | On by default. The agent says what it would switch, but no state is written. |
-| Write permissions | Table, one row per scope: an instance or object ID (`hm-rpc.0` covers everything below it) or a pattern with `*` (`hm-rpc.0.*.STATE`), with the checkboxes "Write allowed" and "Confirmation required". **Add installed instances** adds a row for every installed instance that has none, with nothing allowed yet. States that match no row can only be read. |
+| Simulation mode (nothing is switched) | On by default. The agent says what it would switch, but no state is written and no instance is restarted. |
+| Long-term memory | On by default: the agent keeps facts across all conversations, see below. |
+| Write permissions | Table, one row per scope: an instance or object ID (`hm-rpc.0` covers everything below it) or a pattern with `*` (`hm-rpc.0.*.STATE`), with the checkboxes "Write allowed", "Confirmation required" and "Restart allowed" (only for a row with a whole instance, see below). **Add installed instances** adds a row for every installed instance that has none, with nothing allowed yet. States that match no row can only be read. |
 | Write allowlist, Confirmation required | Under "Advanced": regular expressions, one per line, in addition to the table (the settings of 0.0.5 and earlier keep working). |
 | Time zone       | IANA name such as `Europe/Berlin` for reminders, `get_time` and history times, chosen from a list with the current UTC offsets (the instance must be running for the list) or typed in. Empty: the time zone of the ioBroker server. |
 | History instance | `history`, `sql` or `influxdb` instance for `get_history`. Empty: the default history of the system settings. |
@@ -199,6 +200,33 @@ Select **OpenAI-compatible (own URL)** for any server with the OpenAI chat compl
   SQLite at the first start without pending requests; the old folder is renamed to `session.jsonl-<date>` and kept.
   Earlier history is not carried over, and the messenger chats start new conversations.
 
+## Restart of instances
+
+The tool `restart_instance` restarts an adapter instance, e.g. "telegram does not answer, restart it":
+
+- Only instances with **Restart allowed** in the table "Write permissions". The checkbox counts only for a row whose
+  scope is a whole instance (`telegram.0`), not for an object ID or a pattern, and never for pi-agent or admin.
+  Writing and restarting are allowed separately.
+- Every restart is confirmed with ✅/❌ in the chat of the conversation (messenger or admin chat), also without
+  "Confirmation required". A `sendTo` caller (e.g. ioBroker.assistant) cannot confirm, so a restart from there is
+  blocked.
+- The restart works like the restart button of admin. The agent then waits up to 45 seconds until the instance runs
+  again and says so. A switched-off instance is not switched on. In simulation mode nothing is restarted.
+
+## Long-term memory
+
+A conversation remembers everything said in it, but the conversations do not know each other. Facts that should
+count everywhere go into the long-term memory:
+
+- The agent keeps a fact with the tool `remember` when you ask it to ("remember: the lamp in the living room is
+  hue.0.lamp3") or when you tell it a lasting preference, and removes it with `forget`.
+- All facts go into the instructions of every conversation: messengers, admin chat and `sendTo` callers such as
+  ioBroker.assistant. At most 100 facts, 500 characters each and 8,000 characters together.
+- The facts are in the state `pi-agent.0.memory.list` (JSON). You can edit it there; the adapter takes the change over.
+  `memory.count` shows how many there are. The memory is part of the backups of the conversations.
+- The memory is shared by everyone who writes to the agent. Switch it off with "Long-term memory" in the settings.
+  Never let it keep passwords or keys; the agent is told not to.
+
 ## Backup of the conversations
 
 The conversations are in `session.sqlite` in the instance data directory, which the ioBroker backup does not
@@ -229,6 +257,13 @@ the last copy.
     ### **WORK IN PROGRESS**
 -->
 
+### 0.6.0 (2026-10-28)
+
+- Tool `restart_instance`: restarts adapter instances with "Restart allowed" in the write permissions, after a
+  confirmation in the chat; never pi-agent or admin
+- Long-term memory: facts kept across all conversations (tools `remember` and `forget`, state `memory.list`, part
+  of the backups); switch "Long-term memory" in the settings
+
 ### 0.5.2 (2026-10-28)
 
 - Settings: the base URL and the notes on the system-wide AI settings are not wider on a large display than on a small one (repository checker E5509)
@@ -252,14 +287,6 @@ the last copy.
 - Tab "Backup": backups of the conversations by hand and automatic (daily or weekly) in the storage folder, which
   the ioBroker backup (BackItUp) contains; restore with a safety copy
 - Copy of every backup to an external server over SFTP, and restore from it
-
-### 0.3.0 (2026-10-28)
-
-- OpenAI-compatible servers with an own base URL (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...)
-- The API key can come from the central credential store of admin 8; a changed credential restarts the instance
-- Button "Test connection" in the settings
-- Time zone: a list of all time zones with their UTC offset
-- Requires admin 8.0.0 or newer
 
 Older changelog entries can be found in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 

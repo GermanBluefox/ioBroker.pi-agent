@@ -20,7 +20,6 @@
 	"Prefix": "Prefix",
 	"General": "General",
 	"Write permissions": "Write permissions",
-	"One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed.": "One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed.",
 	"Add installed instances": "Add installed instances",
 	"Scope": "Scope",
 	"Write allowed": "Write allowed",
@@ -78,5 +77,9 @@
 	"After a new installation of ioBroker: enter the SFTP settings above, switch the copy on and save. Then choose a backup on the server and restore it. The file is fetched into the storage folder and the conversations are replaced; the current conversations are saved first as a safety copy.": "After a new installation of ioBroker: enter the SFTP settings above, switch the copy on and save. Then choose a backup on the server and restore it. The file is fetched into the storage folder and the conversations are replaced; the current conversations are saved first as a safety copy.",
 	"The conversations of the agent are replaced by the chosen backup from the server and the instance restarts. The current conversations are saved first as a safety copy. Continue?": "The conversations of the agent are replaced by the chosen backup from the server and the instance restarts. The current conversations are saved first as a safety copy. Continue?",
 	"No API key entered: the system-wide AI settings of admin (System settings, tab \"AI\") are used.": "No API key entered: the system-wide AI settings of admin (System settings, tab \"AI\") are used.",
+	"One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed. \"Restart allowed\" counts only for a whole instance (not pi-agent or admin); every restart is confirmed in the chat.": "One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed. \"Restart allowed\" counts only for a whole instance (not pi-agent or admin); every restart is confirmed in the chat.",
+	"Restart allowed": "Restart allowed",
+	"Long-term memory": "Long-term memory",
+	"The agent keeps facts you tell it to remember (tools remember and forget) across all conversations, in the state memory.list": "The agent keeps facts you tell it to remember (tools remember and forget) across all conversations, in the state memory.list",
 	"Allowed users": "Allowed users"
 }

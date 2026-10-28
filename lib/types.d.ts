@@ -13,9 +13,25 @@ export interface Policy {
     /** Extra instructions of the user. */
     instructions: string;
     /** Ask the user; resolves to "yes", "no", "timeout" or "unavailable". */
-    requestConfirmation?: (request: { conversationId: unknown; id: string; val: unknown }) => Promise<string>;
+    requestConfirmation?: (request: {
+        conversationId: unknown;
+        id: string;
+        val: unknown;
+        action?: string;
+    }) => Promise<string>;
     /** Send a reminder that is due. */
     deliverReminder?: (conversationId: unknown, text: string) => Promise<void>;
     /** History instance to query, or "". */
     historyInstance?: () => Promise<string>;
+    /** Instances with "Restart allowed", e.g. "telegram.0". */
+    restartList?: string[];
+    /** Restart an instance and wait until it runs again; resolves to a text for the model. */
+    restartInstance?: (instance: string) => Promise<string>;
+    /** The long-term memory shared by all conversations. */
+    memory?: {
+        enabled: () => boolean;
+        list: () => Array<{ id: string; text: string; ts: number }>;
+        add: (fact: string) => Promise<string>;
+        remove: (query: string) => Promise<string>;
+    };
 }

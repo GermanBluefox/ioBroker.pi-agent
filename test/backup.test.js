@@ -105,7 +105,7 @@ test('snapshot: committed data and the chat map, while another connection writes
     assert.deepEqual(stageRestore(data, dir), { conversations: 1, chats: 1 });
     assert.ok(fs.existsSync(path.join(dir, RESTORE_FILE)));
     const restored = applyPendingRestore(dir);
-    assert.deepEqual(restored, { chats: { 'telegram.0/42': 'conv-1' } });
+    assert.deepEqual(restored, { chats: { 'telegram.0/42': 'conv-1' }, memory: null });
     assert.equal(fs.existsSync(path.join(dir, RESTORE_FILE)), false);
     assert.equal(fs.existsSync(`${file}-wal`), false, 'the log of the replaced store is gone');
     const db = new DatabaseSync(file, { readOnly: true });

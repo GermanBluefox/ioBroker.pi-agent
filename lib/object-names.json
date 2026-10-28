@@ -142,6 +142,45 @@
 		"uk": "Розмір копії (стиснутої)",
 		"zh-cn": "副本大小（压缩后）"
 	},
+	"memory": {
+		"en": "Long-term memory",
+		"de": "Langzeitgedächtnis",
+		"ru": "Долгосрочная память",
+		"pt": "Memória de longo prazo",
+		"nl": "Langetermijngeheugen",
+		"fr": "Mémoire à long terme",
+		"it": "Memoria a lungo termine",
+		"es": "Memoria a largo plazo",
+		"pl": "Pamięć długotrwała",
+		"uk": "Довготривала памʼять",
+		"zh-cn": "长期记忆"
+	},
+	"memory.list": {
+		"en": "Remembered facts (JSON, editable)",
+		"de": "Gemerkte Fakten (JSON, bearbeitbar)",
+		"ru": "Запомненные факты (JSON, можно править)",
+		"pt": "Factos lembrados (JSON, editável)",
+		"nl": "Onthouden feiten (JSON, bewerkbaar)",
+		"fr": "Faits retenus (JSON, modifiable)",
+		"it": "Fatti ricordati (JSON, modificabile)",
+		"es": "Datos recordados (JSON, editable)",
+		"pl": "Zapamiętane fakty (JSON, edytowalne)",
+		"uk": "Запамʼятовані факти (JSON, можна редагувати)",
+		"zh-cn": "已记住的事实（JSON，可编辑）"
+	},
+	"memory.count": {
+		"en": "Number of remembered facts",
+		"de": "Anzahl gemerkter Fakten",
+		"ru": "Количество запомненных фактов",
+		"pt": "Número de factos lembrados",
+		"nl": "Aantal onthouden feiten",
+		"fr": "Nombre de faits retenus",
+		"it": "Numero di fatti ricordati",
+		"es": "Número de datos recordados",
+		"pl": "Liczba zapamiętanych faktów",
+		"uk": "Кількість запамʼятованих фактів",
+		"zh-cn": "已记住的事实数量"
+	},
 	"telegram": {
 		"en": "Messenger chats",
 		"de": "Messenger-Chats",

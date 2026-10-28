@@ -1,8 +1,21 @@
 {
 	"common": {
 		"name": "pi-agent",
-		"version": "0.5.2",
+		"version": "0.6.0",
 		"news": {
+			"0.6.0": {
+				"en": "Tool restart_instance: the agent restarts adapter instances with \"Restart allowed\" in the write permissions, after a confirmation in the chat; long-term memory: facts kept across all conversations (tools remember and forget, state memory.list, part of the backups)",
+				"de": "Werkzeug restart_instance: der Agent startet Adapterinstanzen mit „Neustart erlaubt“ in den Schreibrechten neu, nach einer Bestätigung im Chat; Langzeitgedächtnis: Fakten über alle Unterhaltungen hinweg (Werkzeuge remember und forget, Datenpunkt memory.list, Teil der Backups)",
+				"ru": "Инструмент restart_instance: агент перезапускает инстансы адаптеров с «Перезапуск разрешён» в правах записи после подтверждения в чате; долгосрочная память: факты для всех бесед (инструменты remember и forget, состояние memory.list, входит в бэкапы)",
+				"pt": "Ferramenta restart_instance: o agente reinicia instâncias de adaptadores com \"Reinício permitido\" nas permissões de escrita, após confirmação no chat; memória de longo prazo: factos em todas as conversas (ferramentas remember e forget, estado memory.list, incluída nos backups)",
+				"nl": "Tool restart_instance: de agent herstart adapterinstanties met \"Herstart toegestaan\" in de schrijfrechten, na een bevestiging in de chat; langetermijngeheugen: feiten over alle gesprekken heen (tools remember en forget, state memory.list, onderdeel van de back-ups)",
+				"fr": "Outil restart_instance : l'agent redémarre les instances d'adaptateur avec « Redémarrage autorisé » dans les droits d'écriture, après une confirmation dans le chat ; mémoire à long terme : des faits pour toutes les conversations (outils remember et forget, état memory.list, inclus dans les sauvegardes)",
+				"it": "Strumento restart_instance: l'agente riavvia le istanze degli adattatori con «Riavvio consentito» nei permessi di scrittura, dopo una conferma nella chat; memoria a lungo termine: fatti per tutte le conversazioni (strumenti remember e forget, stato memory.list, inclusa nei backup)",
+				"es": "Herramienta restart_instance: el agente reinicia instancias de adaptadores con «Reinicio permitido» en los permisos de escritura, tras una confirmación en el chat; memoria a largo plazo: datos para todas las conversaciones (herramientas remember y forget, estado memory.list, incluida en las copias de seguridad)",
+				"pl": "Narzędzie restart_instance: agent restartuje instancje adapterów z „Restart dozwolony” w uprawnieniach zapisu, po potwierdzeniu w czacie; pamięć długotrwała: fakty dla wszystkich rozmów (narzędzia remember i forget, stan memory.list, część kopii zapasowych)",
+				"uk": "Інструмент restart_instance: агент перезапускає інстанси адаптерів із «Перезапуск дозволено» в правах запису після підтвердження в чаті; довготривала памʼять: факти для всіх розмов (інструменти remember і forget, стан memory.list, входить до бекапів)",
+				"zh-cn": "工具 restart_instance：代理在聊天中确认后，重启写入权限中“允许重启”的适配器实例；长期记忆：在所有对话中保留的事实（工具 remember 和 forget，状态 memory.list，包含在备份中）"
+			},
 			"0.5.2": {
 				"en": "Settings: the base URL and the notes on the system-wide AI settings are not wider on a large display than on a small one (repository checker E5509)",
 				"de": "Einstellungen: die Basis-URL und die Hinweise zu den systemweiten KI-Einstellungen sind auf großen Bildschirmen nicht breiter als auf kleinen (Repository-Checker E5509)",
@@ -80,19 +93,6 @@
 				"pl": "Czat w panelu admina: pozycja menu „Pi Agent” otwiera czat z agentem, jedna rozmowa na użytkownika ioBroker, z wywołaniami narzędzi, przyciskami potwierdzenia i przypomnieniami",
 				"uk": "Чат в адмінці: пункт меню «Pi Agent» відкриває чат з агентом, окрема розмова для кожного користувача ioBroker, з викликами інструментів, кнопками підтвердження та нагадуваннями",
 				"zh-cn": "管理界面中的聊天：菜单项“Pi Agent”打开与代理的聊天，每个 ioBroker 用户一个对话，显示工具调用、确认按钮和提醒"
-			},
-			"0.1.0": {
-				"en": "Several Telegram bots and the MAX messenger; table of write permissions with a button for the installed instances; settings in tabs; \"dry run\" is now \"simulation mode\"",
-				"de": "Mehrere Telegram-Bots und der MAX-Messenger; Tabelle der Schreibrechte mit einer Schaltfläche für die installierten Instanzen; Einstellungen in Reitern; „Probelauf“ heißt jetzt „Simulationsmodus“",
-				"ru": "Несколько ботов Telegram и мессенджер MAX; таблица прав на запись с кнопкой для установленных инстансов; настройки по вкладкам; «пробный запуск» теперь называется «режим симуляции»",
-				"pt": "Vários bots do Telegram e o mensageiro MAX; tabela de permissões de escrita com um botão para as instâncias instaladas; definições em separadores; o \"teste\" chama-se agora \"modo de simulação\"",
-				"nl": "Meerdere Telegram-bots en de MAX-messenger; tabel met schrijfrechten met een knop voor de geïnstalleerde instanties; instellingen in tabbladen; \"proefdraaien\" heet nu \"simulatiemodus\"",
-				"fr": "Plusieurs bots Telegram et la messagerie MAX ; tableau des droits d'écriture avec un bouton pour les instances installées ; paramètres en onglets ; « essai à blanc » s'appelle désormais « mode simulation »",
-				"it": "Più bot Telegram e il messenger MAX; tabella dei permessi di scrittura con un pulsante per le istanze installate; impostazioni in schede; la \"prova\" ora si chiama \"modalità simulazione\"",
-				"es": "Varios bots de Telegram y la mensajería MAX; tabla de permisos de escritura con un botón para las instancias instaladas; configuración en pestañas; la \"prueba\" ahora se llama \"modo de simulación\"",
-				"pl": "Kilka botów Telegrama i komunikator MAX; tabela uprawnień do zapisu z przyciskiem dla zainstalowanych instancji; ustawienia w zakładkach; „próba” nazywa się teraz „tryb symulacji”",
-				"uk": "Кілька ботів Telegram і месенджер MAX; таблиця прав на запис із кнопкою для встановлених інстансів; налаштування на вкладках; «пробний запуск» тепер називається «режим симуляції»",
-				"zh-cn": "多个 Telegram 机器人和 MAX 即时通讯；写入权限表，并带有添加已安装实例的按钮；设置分为多个选项卡；“试运行”现在称为“模拟模式”"
 			}
 		},
 		"titleLang": {
@@ -196,6 +196,7 @@
 		"writeAllow": "",
 		"instructions": "",
 		"dryRun": true,
+		"longTermMemory": true,
 		"messengers": [],
 		"confirmRequired": "",
 		"historyInstance": "",

@@ -214,5 +214,5 @@ test('write rules: only rows with "write" allow; "confirm" counts only together 
     assert.ok(!isWriteAllowed('hm-rpc.0.a', confirm));
     assert.ok(!isWriteAllowed('shelly.0.a', confirm));
     assert.ok(isWriteAllowed('zigbee.0.door.lock', confirm));
-    assert.deepEqual(parseWriteRules(undefined), { allow: [], confirm: [] });
+    assert.deepEqual(parseWriteRules(undefined), { allow: [], confirm: [], restart: [] });
 });

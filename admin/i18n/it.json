@@ -20,7 +20,6 @@
 	"Prefix": "Prefisso",
 	"General": "Generale",
 	"Write permissions": "Permessi di scrittura",
-	"One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed.": "Una riga per ambito: un'istanza (hm-rpc.0) o un ID oggetto con tutto ciò che sta sotto, oppure un modello con * (hm-rpc.0.*.STATE). Gli stati che non corrispondono a nessuna riga possono essere solo letti. «Conferma richiesta» vale solo dove la scrittura è consentita.",
 	"Add installed instances": "Aggiungi le istanze installate",
 	"Scope": "Ambito",
 	"Write allowed": "Scrittura consentita",
@@ -78,5 +77,9 @@
 	"After a new installation of ioBroker: enter the SFTP settings above, switch the copy on and save. Then choose a backup on the server and restore it. The file is fetched into the storage folder and the conversations are replaced; the current conversations are saved first as a safety copy.": "Dopo una nuova installazione di ioBroker: inserire sopra le impostazioni SFTP, attivare la copia e salvare. Poi scegliere un backup sul server e ripristinarlo. Il file viene prelevato nella cartella di archiviazione e le conversazioni vengono sostituite; le conversazioni attuali vengono prima salvate come copia di sicurezza.",
 	"The conversations of the agent are replaced by the chosen backup from the server and the instance restarts. The current conversations are saved first as a safety copy. Continue?": "Le conversazioni dell'agente vengono sostituite dal backup scelto sul server e l'istanza si riavvia. Le conversazioni attuali vengono prima salvate come copia di sicurezza. Continuare?",
 	"No API key entered: the system-wide AI settings of admin (System settings, tab \"AI\") are used.": "Nessuna chiave API inserita: vengono usate le impostazioni IA di sistema di admin (impostazioni di sistema, scheda «IA»).",
+	"One row per scope: an instance (hm-rpc.0) or an object ID with everything below it, or a pattern with * (hm-rpc.0.*.STATE). States that match no row can only be read. \"Confirmation required\" counts only where writing is allowed. \"Restart allowed\" counts only for a whole instance (not pi-agent or admin); every restart is confirmed in the chat.": "Una riga per ambito: un'istanza (hm-rpc.0) o un ID oggetto con tutto ciò che sta sotto, oppure un modello con * (hm-rpc.0.*.STATE). Gli stati che non corrispondono a nessuna riga possono essere solo letti. «Conferma richiesta» vale solo dove la scrittura è consentita. «Riavvio consentito» vale solo per un'intera istanza (non pi-agent né admin); ogni riavvio viene confermato nella chat.",
+	"Restart allowed": "Riavvio consentito",
+	"Long-term memory": "Memoria a lungo termine",
+	"The agent keeps facts you tell it to remember (tools remember and forget) across all conversations, in the state memory.list": "L'agente conserva i fatti che gli chiedi di ricordare (strumenti remember e forget) in tutte le conversazioni, nello stato memory.list",
 	"Allowed users": "Utenti consentiti"
 }
