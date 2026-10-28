@@ -1,8 +1,21 @@
 {
 	"common": {
 		"name": "pi-agent",
-		"version": "0.3.0",
+		"version": "0.4.0",
 		"news": {
+			"0.4.0": {
+				"en": "Tab \"Backup\": backups of the conversations by hand and automatic (daily or weekly) in the storage folder, which the ioBroker backup contains; copy to an external server over SFTP; restore from both",
+				"de": "Reiter „Backup“: Backups der Unterhaltungen manuell und automatisch (täglich oder wöchentlich) im Speicherordner, der im ioBroker-Backup enthalten ist; Kopie auf einen externen Server per SFTP; Wiederherstellung aus beiden",
+				"ru": "Вкладка «Backup»: бэкапы бесед вручную и автоматически (ежедневно или еженедельно) в папке хранилища, которая входит в бэкап ioBroker; копия на внешний сервер по SFTP; восстановление из обоих",
+				"pt": "Separador \"Backup\": backups das conversas manuais e automáticos (diários ou semanais) na pasta de armazenamento, incluída no backup do ioBroker; cópia para um servidor externo por SFTP; restauro a partir de ambos",
+				"nl": "Tabblad \"Backup\": back-ups van de gesprekken handmatig en automatisch (dagelijks of wekelijks) in de opslagmap, die in de ioBroker-back-up zit; kopie naar een externe server via SFTP; herstellen uit beide",
+				"fr": "Onglet « Backup » : sauvegardes des conversations manuelles et automatiques (quotidiennes ou hebdomadaires) dans le dossier de stockage, inclus dans la sauvegarde ioBroker ; copie vers un serveur externe par SFTP ; restauration depuis les deux",
+				"it": "Scheda «Backup»: backup delle conversazioni manuali e automatici (giornalieri o settimanali) nella cartella di archiviazione, inclusa nel backup di ioBroker; copia su un server esterno via SFTP; ripristino da entrambi",
+				"es": "Pestaña «Backup»: copias de seguridad de las conversaciones manuales y automáticas (diarias o semanales) en la carpeta de almacenamiento, incluida en la copia de ioBroker; copia a un servidor externo por SFTP; restauración desde ambos",
+				"pl": "Zakładka „Backup”: kopie zapasowe rozmów ręczne i automatyczne (codziennie lub co tydzień) w folderze magazynu, który jest w kopii zapasowej ioBroker; kopia na serwer zewnętrzny przez SFTP; przywracanie z obu",
+				"uk": "Вкладка «Backup»: бекапи розмов вручну та автоматично (щодня або щотижня) у папці сховища, яка входить до бекапу ioBroker; копія на зовнішній сервер через SFTP; відновлення з обох",
+				"zh-cn": "“Backup”选项卡：对话的手动和自动备份（每日或每周），保存在 ioBroker 备份所包含的存储文件夹中；通过 SFTP 复制到外部服务器；可从两者恢复"
+			},
 			"0.3.0": {
 				"en": "OpenAI-compatible servers with an own base URL (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...); the API key can come from the central credential store of admin 8; button \"Test connection\"",
 				"de": "OpenAI-kompatible Server mit eigener Basis-URL (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...); der API-Schlüssel kann aus dem zentralen Zugangsdaten-Speicher von Admin 8 kommen; Schaltfläche „Verbindung testen“",
@@ -80,19 +93,6 @@
 				"pl": "Rozmowy są zapisywane w SQLite (mniej pamięci); czaty Telegram nie czekają już na siebie; bezpieczniejsze formatowanie Telegram",
 				"uk": "Розмови зберігаються в SQLite (менше памʼяті); чати Telegram більше не чекають один на одного; надійніше форматування в Telegram",
 				"zh-cn": "对话保存在 SQLite 中（占用内存更少）；Telegram 聊天不再相互等待；Telegram 格式更安全"
-			},
-			"0.0.2": {
-				"en": "Telegram answers keep their formatting (bold, italic, code, links); released with npm provenance",
-				"de": "Telegram-Antworten behalten ihre Formatierung (fett, kursiv, Code, Links); mit npm-Provenance veröffentlicht",
-				"ru": "Ответы в Telegram сохраняют форматирование (жирный, курсив, код, ссылки); опубликовано с npm provenance",
-				"pt": "As respostas no Telegram mantêm a formatação (negrito, itálico, código, links); publicado com proveniência npm",
-				"nl": "Telegram-antwoorden behouden hun opmaak (vet, cursief, code, links); gepubliceerd met npm-herkomst",
-				"fr": "Les réponses Telegram gardent leur mise en forme (gras, italique, code, liens) ; publié avec la provenance npm",
-				"it": "Le risposte su Telegram mantengono la formattazione (grassetto, corsivo, codice, link); pubblicato con provenienza npm",
-				"es": "Las respuestas en Telegram conservan el formato (negrita, cursiva, código, enlaces); publicado con procedencia npm",
-				"pl": "Odpowiedzi w Telegramie zachowują formatowanie (pogrubienie, kursywa, kod, linki); opublikowano z pochodzeniem npm",
-				"uk": "Відповіді в Telegram зберігають форматування (жирний, курсив, код, посилання); опубліковано з npm provenance",
-				"zh-cn": "Telegram 回答保留格式（粗体、斜体、代码、链接）；带 npm 来源证明发布"
 			}
 		},
 		"titleLang": {
@@ -178,10 +178,12 @@
 		]
 	},
 	"encryptedNative": [
-		"apiKey"
+		"apiKey",
+		"remotePassword"
 	],
 	"protectedNative": [
-		"apiKey"
+		"apiKey",
+		"remotePassword"
 	],
 	"native": {
 		"provider": "anthropic",
@@ -197,7 +199,17 @@
 		"messengers": [],
 		"confirmRequired": "",
 		"historyInstance": "",
-		"timeZone": ""
+		"timeZone": "",
+		"autoBackupInterval": 24,
+		"backupKeep": 7,
+		"remoteEnabled": false,
+		"remoteHost": "",
+		"remotePort": 22,
+		"remoteUser": "",
+		"remotePassword": "",
+		"remoteDirectory": "",
+		"remoteHostKey": "",
+		"remoteKeep": 0
 	},
 	"objects": [],
 	"instanceObjects": [

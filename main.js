@@ -2,6 +2,7 @@
 
 const utils = require('@iobroker/adapter-core');
 const crypto = require('node:crypto');
+const path = require('node:path');
 const { parseAllowlist, parseWriteRules, requestIdFor } = require('./lib/guard');
 const { createIoBrokerExtension } = require('./lib/tools');
 const { createModelsWithKey, listModels, testModel } = require('./lib/providers');
@@ -16,6 +17,37 @@ const {
 } = require('./lib/credentials');
 const { ensureObjects } = require('./lib/objects');
 const { openStore } = require('./lib/store');
+const {
+    BACKUP_DIR,
+    STORE_FILE,
+    backupName,
+    isBackupName,
+    sortBackupsNewestFirst,
+    selectLocalBackupsToPrune,
+    backupLabel,
+    createSnapshot,
+    stageRestore,
+    applyPendingRestore,
+} = require('./lib/backup');
+const { autoBackupDelay } = require('./lib/backup-schedule');
+const {
+    copyBackupToRemote,
+    settingsForConnectionTest,
+    testRemoteConnection,
+    listRemoteBackups,
+    fetchRemoteBackup,
+} = require('./lib/remote-backup');
+const { connectSsh2 } = require('./lib/sftp-ssh2');
+
+/** Commands of the tab "Backup" of the admin page. */
+const BACKUP_COMMANDS = [
+    'createBackup',
+    'listBackups',
+    'restoreBackup',
+    'testRemoteBackup',
+    'listRemoteBackups',
+    'restoreFromRemote',
+];
 const { resolveTimeZone, timeZoneOptions } = require('./lib/time');
 const { channelsFromConfig, legacyRows, chatKey, parseChatKey, migrateChats } = require('./lib/channels');
 const { createDrivers, messengerType, MESSENGER_ADAPTERS } = require('./lib/messengers');
@@ -152,6 +184,10 @@ class PiAgent extends utils.Adapter {
         this.stopping = false;
         /** One queue per conversation ("root" or "<instance>/<chat id>"): runs of one conversation are serialised. */
         this.queues = new Map();
+        /** Next automatic backup of the conversations (a timer). */
+        this.backupTimer = undefined;
+        /** Copies to the SFTP server, one after the other. */
+        this.remoteQueue = Promise.resolve();
         this.readyPromise = new Promise(resolve => {
             this.markReady = resolve;
         });
@@ -170,6 +206,8 @@ class PiAgent extends utils.Adapter {
             }
             // Created here, not in instanceObjects: js-controller would reset their ACL at every start.
             await ensureObjects(this);
+            // a backup chosen for restore replaces the store before anything opens it
+            await this.applyRestore();
             // the table "Write permissions" and the regular expressions of the expert fields both count
             const rules = parseWriteRules(this.config.writeRules);
             this.allowlist = [
@@ -203,6 +241,7 @@ class PiAgent extends utils.Adapter {
             await this.startHarness(apiKey);
             await this.subscribeStatesAsync('chat.input');
             await this.startMessengers();
+            await this.scheduleAutoBackup();
             await this.setStateAsync('info.connection', { val: true, ack: true });
             this.markReady();
 
@@ -706,6 +745,311 @@ class PiAgent extends utils.Adapter {
         return String(system?.common?.defaultHistory || '');
     }
 
+    // ── Backups of the conversations (lib/backup.js, lib/remote-backup.js) ──────────────────────────────
+
+    /**
+     * A command of the tab "Backup".
+     *
+     * @param {string} command one of BACKUP_COMMANDS
+     * @param {Record<string, unknown>} message jsonData of the admin page
+     * @returns {Promise<object>} answer for the admin page: { result } / { error } or the options of a selection
+     */
+    async onBackupCommand(command, message) {
+        switch (command) {
+            case 'createBackup':
+                return { result: await this.createBackup('manual') };
+            case 'listBackups': {
+                const backups = await this.listStoredBackups();
+                return backups.length > 0
+                    ? backups.map(b => ({ value: b.name, label: backupLabel(b.name, b.size) }))
+                    : [{ value: '', label: 'No backup in the storage folder' }];
+            }
+            case 'restoreBackup':
+                return { result: await this.restoreBackup(String(message.file || '')) };
+            case 'testRemoteBackup': {
+                // an empty password field means the saved password, but only for the saved server
+                const settings = settingsForConnectionTest(message, this.remoteSettings());
+                const result = await testRemoteConnection(connectSsh2, settings, this.remoteTimers());
+                const hint =
+                    result.ok && !String(settings.hostKey || '').trim() && result.fingerprint
+                        ? ` Fingerprint of the server (enter it to trust only this server): ${result.fingerprint}`
+                        : '';
+                return result.ok ? { result: `OK: ${result.message}.${hint}` } : { error: result.message };
+            }
+            case 'listRemoteBackups': {
+                const settings = this.remoteSettings();
+                if (!settings.enabled) {
+                    return [{ value: '', label: 'Switch the copy to the external server on and save first' }];
+                }
+                const result = await listRemoteBackups(connectSsh2, settings, this.remoteTimers());
+                if (!result.ok) {
+                    return [{ value: '', label: `Error: ${result.message}` }];
+                }
+                return result.names.length > 0
+                    ? result.names.map(name => ({ value: name, label: backupLabel(name) }))
+                    : [{ value: '', label: 'No backup on the server' }];
+            }
+            case 'restoreFromRemote':
+                return { result: await this.restoreFromRemote(String(message.file || '')) };
+            default:
+                return { error: `Unknown command ${command}` };
+        }
+    }
+
+    /** @returns {string} id of the mount point of the storage folder, `<namespace>.storage` */
+    storageId() {
+        return `${this.namespace}.storage`;
+    }
+
+    /** @returns {string} path of the conversation store */
+    storeFile() {
+        return path.join(utils.getAbsoluteInstanceDataDir(this), STORE_FILE);
+    }
+
+    /**
+     * The backup files in the storage folder, newest first.
+     *
+     * @returns {Promise<Array<{ name: string, size: number }>>} backups (empty when the folder is missing)
+     */
+    async listStoredBackups() {
+        let entries;
+        try {
+            entries = await this.readDirAsync(this.storageId(), BACKUP_DIR);
+        } catch {
+            return [];
+        }
+        const sizes = new Map(
+            (entries || []).filter(e => !e.isDir).map(e => [e.file, Number(e.stats && e.stats.size) || 0]),
+        );
+        return sortBackupsNewestFirst([...sizes.keys()]).map(name => ({ name, size: Number(sizes.get(name)) }));
+    }
+
+    /**
+     * Save a backup of the conversations in the storage folder and, when switched on, copy it to the SFTP server.
+     *
+     * @param {'manual' | 'auto' | 'prerestore'} kind made by hand, automatic or safety copy before a restore
+     * @returns {Promise<string>} what was done, for the log and the admin page
+     */
+    async createBackup(kind) {
+        const chatsState = await this.getStateAsync('telegram.chats');
+        let chats = Object.create(null);
+        try {
+            chats = chatsState?.val ? JSON.parse(String(chatsState.val)) : {};
+        } catch {
+            // an unreadable map is not part of the backup
+        }
+        const { data, rawSize } = createSnapshot(this.storeFile(), { chats });
+        // meta.user: ioBroker and BackItUp backups take the files of the mount point along
+        await this.setForeignObjectNotExistsAsync(this.storageId(), {
+            type: 'meta',
+            common: { name: 'Pi Agent backups', type: 'meta.user' },
+            native: {},
+        });
+        const now = Date.now();
+        const name = backupName(kind, new Date(now));
+        await this.writeFileAsync(this.storageId(), `${BACKUP_DIR}/${name}`, data);
+        await this.setStateAsync('backup.last', { val: now, ack: true });
+        await this.setStateAsync('backup.size', { val: data.length, ack: true });
+        const kb = n => `${Math.max(1, Math.round(n / 1024))} kB`;
+        let message = `Backup saved: ${this.storageId()}/${BACKUP_DIR}/${name} (${kb(data.length)}, ${kb(rawSize)} uncompressed)`;
+        this.log.info(message);
+        if (kind === 'auto') {
+            await this.pruneStoredBackups();
+        }
+        if (kind !== 'prerestore') {
+            const remote = await this.copyToRemote({ name, data });
+            if (remote) {
+                message += remote.ok
+                    ? `; copied to the external server (${remote.remoteFile})`
+                    : `; the copy to the external server FAILED: ${remote.message}`;
+            }
+        }
+        return message;
+    }
+
+    /** Delete the oldest automatic backups in the storage folder beyond `backupKeep`. */
+    async pruneStoredBackups() {
+        const names = (await this.listStoredBackups()).map(b => b.name);
+        for (const old of selectLocalBackupsToPrune(names, this.config.backupKeep)) {
+            try {
+                await this.delFileAsync(this.storageId(), `${BACKUP_DIR}/${old}`);
+                this.log.info(`Old automatic backup deleted: ${old}`);
+            } catch (e) {
+                this.log.warn(`Cannot delete the old backup ${old}: ${e.message}`);
+            }
+        }
+    }
+
+    /**
+     * Check a backup and restart the instance, which puts it in place before the store is opened (see onReady).
+     * The current conversations are saved first as a safety copy.
+     *
+     * @param {Buffer} data content of the backup file
+     * @param {string} name file name, for the messages
+     * @returns {Promise<string>} what was done
+     */
+    async restoreFrom(data, name) {
+        const { conversations, chats } = stageRestore(data, utils.getAbsoluteInstanceDataDir(this));
+        let safety = '';
+        try {
+            safety = await this.createBackup('prerestore');
+        } catch (e) {
+            // no store yet (a new installation): nothing to keep
+            this.log.debug(`No safety copy before the restore: ${e.message}`);
+        }
+        const message = `Backup ${name} (${conversations} conversation(s), ${chats} chat(s)) is restored at the restart of the instance${safety ? '; the current conversations were saved before' : ''}`;
+        this.log.info(message);
+        setTimeout(() => this.restart(), 1000);
+        return message;
+    }
+
+    /**
+     * Restore a backup of the storage folder.
+     *
+     * @param {string} name backup file name
+     * @returns {Promise<string>} what was done
+     */
+    async restoreBackup(name) {
+        if (!isBackupName(name)) {
+            throw new Error('Choose a backup from the list');
+        }
+        const result = await this.readFileAsync(this.storageId(), `${BACKUP_DIR}/${name}`);
+        const file = result && typeof result === 'object' && 'file' in result ? result.file : result;
+        return this.restoreFrom(Buffer.isBuffer(file) ? file : Buffer.from(String(file ?? ''), 'binary'), name);
+    }
+
+    /**
+     * Fetch a backup from the SFTP server into the storage folder and restore it.
+     *
+     * @param {string} name file name on the server
+     * @returns {Promise<string>} what was done
+     */
+    async restoreFromRemote(name) {
+        const settings = this.remoteSettings();
+        if (!settings.enabled) {
+            throw new Error('Switch the copy to the external server on and save first');
+        }
+        const fetched = await fetchRemoteBackup(connectSsh2, settings, name, this.remoteTimers());
+        if (!fetched.ok || !fetched.data) {
+            throw new Error(`Download from the external server failed: ${fetched.message}`);
+        }
+        await this.setForeignObjectNotExistsAsync(this.storageId(), {
+            type: 'meta',
+            common: { name: 'Pi Agent backups', type: 'meta.user' },
+            native: {},
+        });
+        await this.writeFileAsync(this.storageId(), `${BACKUP_DIR}/${name}`, fetched.data);
+        return this.restoreFrom(fetched.data, name);
+    }
+
+    /**
+     * Timers for the SFTP copy, so a pending timeout ends with the instance.
+     *
+     * @returns {{ start: (callback: () => void, ms: number) => ReturnType<typeof setTimeout>, stop: (handle: ReturnType<typeof setTimeout>) => void }} timers
+     */
+    remoteTimers() {
+        return {
+            start: (callback, ms) => setTimeout(callback, ms),
+            stop: handle => handle && clearTimeout(handle),
+        };
+    }
+
+    /** @returns {object} the instance settings of the copy to the external server, for lib/remote-backup.js */
+    remoteSettings() {
+        return {
+            enabled: this.config.remoteEnabled === true,
+            host: this.config.remoteHost,
+            port: Number(this.config.remotePort) || undefined,
+            username: this.config.remoteUser,
+            password: this.config.remotePassword,
+            directory: this.config.remoteDirectory,
+            hostKey: this.config.remoteHostKey,
+            keep: Number(this.config.remoteKeep || 0),
+        };
+    }
+
+    /**
+     * Copy a backup to the external server, when that is switched on. The local backup is already safe at this
+     * point: a failed copy is logged and shown in backup.remoteError. Copies run one after the other.
+     *
+     * @param {{ name: string, data: Buffer }} backup file name on the server and the bytes
+     * @returns {Promise<{ ok: boolean, message: string, remoteFile?: string } | null>} the result, or null when the copy is switched off
+     */
+    copyToRemote(backup) {
+        const settings = this.remoteSettings();
+        if (!settings.enabled) {
+            return Promise.resolve(null);
+        }
+        const run = async () => {
+            const result = await copyBackupToRemote(connectSsh2, settings, backup, this.log, this.remoteTimers());
+            if (result.ok) {
+                this.log.info(`Backup copied to the external server: ${result.remoteFile}`);
+                for (const old of result.deleted) {
+                    this.log.info(`Old copy deleted on the external server: ${old}`);
+                }
+                for (const stale of result.partialsRemoved) {
+                    this.log.info(`Interrupted upload removed on the external server: ${stale}`);
+                }
+                await this.setStateAsync('backup.lastRemote', { val: result.remoteFile || backup.name, ack: true });
+                await this.setStateAsync('backup.remoteError', { val: '', ack: true });
+            } else {
+                this.log.error(`Copy to the external server failed: ${result.message}`);
+                await this.setStateAsync('backup.remoteError', { val: result.message, ack: true });
+            }
+            return result;
+        };
+        const next = this.remoteQueue.then(run, run);
+        this.remoteQueue = next.catch(() => undefined);
+        return next;
+    }
+
+    /**
+     * Plan the next automatic backup from `autoBackupInterval` and the time of the last backup (backup.last, so a
+     * restart does not reset the clock). Off when the interval is 0.
+     */
+    async scheduleAutoBackup() {
+        clearTimeout(this.backupTimer);
+        this.backupTimer = undefined;
+        const last = await this.getStateAsync('backup.last');
+        const delay = autoBackupDelay(this.config.autoBackupInterval, last ? Number(last.val) : 0);
+        if (delay === null || this.stopping) {
+            return;
+        }
+        this.log.debug(`Next automatic backup in ${Math.round(delay / 60_000)} min`);
+        this.backupTimer = setTimeout(() => void this.runAutoBackup(), delay);
+    }
+
+    /** Run one automatic backup; a failure is retried after one hour. */
+    async runAutoBackup() {
+        this.backupTimer = undefined;
+        try {
+            await this.createBackup('auto');
+        } catch (e) {
+            this.log.warn(`Automatic backup failed: ${e.message} — next attempt in one hour`);
+            if (!this.stopping) {
+                this.backupTimer = setTimeout(() => void this.runAutoBackup(), 3_600_000);
+            }
+            return;
+        }
+        await this.scheduleAutoBackup();
+    }
+
+    /**
+     * At the start, before the store is opened: put a backup chosen for restore in place, with its chat map.
+     * Requests that were waiting belong to the replaced conversations and are dropped.
+     */
+    async applyRestore() {
+        const restored = applyPendingRestore(utils.getAbsoluteInstanceDataDir(this));
+        if (!restored) {
+            return;
+        }
+        await this.setStateAsync('telegram.chats', { val: JSON.stringify(restored.chats), ack: true });
+        await this.setStateAsync('chat.pending', { val: '', ack: true });
+        this.log.info(
+            `Conversations restored from a backup (${Object.keys(restored.chats).length} chat(s)); waiting requests were dropped`,
+        );
+    }
+
     /** Publish the token use and cost of all conversations in usage.*. */
     async updateUsage() {
         try {
@@ -1116,6 +1460,19 @@ class PiAgent extends utils.Adapter {
             }
             return;
         }
+        if (BACKUP_COMMANDS.includes(String(obj?.command))) {
+            // tab "Backup" of the admin page
+            let answer;
+            try {
+                answer = await this.onBackupCommand(String(obj.command), Object(obj.message));
+            } catch (e) {
+                answer = { error: e.message };
+            }
+            if (obj.callback) {
+                this.sendTo(obj.from, obj.command, answer, obj.callback);
+            }
+            return;
+        }
         if (obj?.command === 'listTimeZones') {
             if (obj.callback) {
                 this.sendTo(obj.from, obj.command, timeZoneOptions(), obj.callback);
@@ -1161,6 +1518,7 @@ class PiAgent extends utils.Adapter {
     /** @param {() => void} callback called when everything is stopped */
     onUnload(callback) {
         this.stopping = true;
+        clearTimeout(this.backupTimer);
         const done = async () => {
             try {
                 await this.harness?.close(this.context);

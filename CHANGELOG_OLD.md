@@ -1,5 +1,13 @@
 # Older Changelog
 
+### 0.0.4 (2026-10-26)
+
+- Writes can require a confirmation with buttons in Telegram ("Confirmation required")
+- New tool `remind_me`: reminders that survive restarts
+- New tool `get_history`: past values from the history, sql or influxdb instance
+- Token use and cost in `usage.*`
+- Time zone setting: `remind_me` reads local times ("18:00", "27.10. 18:00"), answers and history are in local time, new tool `get_time`
+
 ### 0.0.3 (2026-10-26)
 
 - Conversations are stored in SQLite instead of JSONL, which kept the whole history in memory

@@ -40,7 +40,7 @@ before it runs, so an interrupted request continues after the adapter starts aga
 
 ## Configuration
 
-The settings have three tabs: **General**, **Write permissions** and **Messengers**.
+The settings have four tabs: **General**, **Write permissions**, **Messengers** and **Backup** (see below).
 
 | Setting         | Meaning                                                                          |
 | --------------- | -------------------------------------------------------------------------------- |
@@ -190,6 +190,29 @@ Select **OpenAI-compatible (own URL)** for any server with the OpenAI chat compl
   SQLite at the first start without pending requests; the old folder is renamed to `session.jsonl-<date>` and kept.
   Earlier history is not carried over, and the messenger chats start new conversations.
 
+## Backup of the conversations
+
+The conversations are in `session.sqlite` in the instance data directory, which the ioBroker backup does not
+contain. The tab **Backup** saves them where it does:
+
+- **Create backup** writes a consistent, gzip-compressed copy of the store, together with the assignment of the
+  messenger chats, into the storage folder `pi-agent.0.storage/backups` (admin → **Files**). ioBroker and BackItUp
+  backups take this folder along. The agent goes on working while the copy is made.
+- **Automatic backup**: daily (default) or weekly, counted from the last backup, also after a restart; a backup that
+  is due runs five minutes after the start. "Automatic backups to keep" (default 7) deletes the oldest automatic
+  ones; backups made by hand and safety copies are never deleted.
+- **Restore** replaces the conversations by the chosen backup and restarts the instance. The current conversations
+  are saved first as a safety copy (`pi-agent-prerestore-….sqlite.gz`). Requests that were waiting are dropped.
+- **Copy to an external server (SFTP)**: every backup is also copied to another computer, e.g. a NAS, with the SFTP
+  protocol itself (no mount, no sudo). The upload is written as `.part` and renamed when it is complete; the
+  fingerprint of the server can be pinned. Use a user that may only write into the target directory. The file holds
+  the full text of the conversations and is not encrypted on the server.
+- **Restore from the external server**, e.g. after a new installation: enter the SFTP settings, switch the copy on,
+  save, then choose a backup on the server.
+
+The states `backup.last`, `backup.size`, `backup.lastRemote` and `backup.remoteError` show the last backup and
+the last copy.
+
 ## Changelog
 
 <!--
@@ -201,6 +224,12 @@ Select **OpenAI-compatible (own URL)** for any server with the OpenAI chat compl
 - The system-wide AI settings of admin (System settings, tab "AI") can be used: new key source, default for new instances; an instance without a key of its own takes them too
 - Google Gemini and OpenRouter as providers (OpenRouter: one key for the models of many vendors, model IDs as `vendor/model`)
 - sendTo `ask` accepts `conversation` and `instructions`: a conversation of its own per caller conversation, e.g. one per room of a voice assistant
+
+### 0.4.0 (2026-10-28)
+
+- Tab "Backup": backups of the conversations by hand and automatic (daily or weekly) in the storage folder, which
+  the ioBroker backup (BackItUp) contains; restore with a safety copy
+- Copy of every backup to an external server over SFTP, and restore from it
 
 ### 0.3.0 (2026-10-28)
 
@@ -227,14 +256,6 @@ Select **OpenAI-compatible (own URL)** for any server with the OpenAI chat compl
 
 - Model field: a list of the models of the chosen provider, a model ID can still be typed in
 - Fix: sendTo (e.g. `ask` from scripts, the model list) never reached the adapter, because `supportedMessages: {custom: false}` switched the message box off; the outdated key is removed from the instance at the first start, which restarts the instance once
-
-### 0.0.4 (2026-10-26)
-
-- Writes can require a confirmation with buttons in Telegram ("Confirmation required")
-- New tool `remind_me`: reminders that survive restarts
-- New tool `get_history`: past values from the history, sql or influxdb instance
-- Token use and cost in `usage.*`
-- Time zone setting: `remind_me` reads local times ("18:00", "27.10. 18:00"), answers and history are in local time, new tool `get_time`
 
 Older changelog entries can be found in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 

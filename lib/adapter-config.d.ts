@@ -25,6 +25,18 @@ declare global {
             confirmRequired: string;
             historyInstance: string;
             timeZone: string;
+            /** Tab "Backup" since 0.4.0: automatic backup every so many hours (0 off, 24, 168) and how many to keep. */
+            autoBackupInterval: number;
+            backupKeep: number;
+            /** Copy of every backup to an external server over SFTP. */
+            remoteEnabled: boolean;
+            remoteHost: string;
+            remotePort: number;
+            remoteUser: string;
+            remotePassword: string;
+            remoteDirectory: string;
+            remoteHostKey: string;
+            remoteKeep: number;
         }
     }
 }
