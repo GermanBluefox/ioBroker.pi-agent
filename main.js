@@ -79,7 +79,7 @@ function chatTarget(target) {
 }
 
 /** Longest instructions a sendTo caller may give its conversation, in characters. */
-const MAX_CALLER_INSTRUCTIONS = 4000;
+const MAX_CALLER_INSTRUCTIONS = 20000;
 
 /**
  * Target of a sendTo "ask": the root conversation, or a conversation of its own when the caller names one
@@ -574,7 +574,7 @@ class PiAgent extends utils.Adapter {
             return this.root;
         }
         const instance = target.kind === 'admin' ? ADMIN : target.instance;
-        // a sendTo caller brings the instructions of its conversation along (e.g. "short, spoken answers")
+        // a sendTo caller brings the instructions of its conversation along (e.g. "short, spoken answers", a list of the devices)
         const instructions =
             target.kind === 'sendTo' ? target.instructions || undefined : this.instructionsOf(instance);
         const known = this.chats[key];
