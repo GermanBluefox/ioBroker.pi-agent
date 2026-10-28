@@ -30,6 +30,7 @@ const {
     applyPendingRestore,
 } = require('./lib/backup');
 const { autoBackupDelay } = require('./lib/backup-schedule');
+const { queuedPurges, queuePurge, purgeQueued } = require('./lib/purge');
 const {
     copyBackupToRemote,
     settingsForConnectionTest,
@@ -532,6 +533,7 @@ class PiAgent extends utils.Adapter {
         } catch {
             // an unreadable list is dropped later by resumePending
         }
+        await this.purgeConversations();
         const { storage, migrated } = await openStore(utils.getAbsoluteInstanceDataDir(this), this.context, {
             pendingCount,
             log: this.log,
@@ -827,7 +829,7 @@ class PiAgent extends utils.Adapter {
     /**
      * Save a backup of the conversations in the storage folder and, when switched on, copy it to the SFTP server.
      *
-     * @param {'manual' | 'auto' | 'prerestore'} kind made by hand, automatic or safety copy before a restore
+     * @param {'manual' | 'auto' | 'prerestore' | 'prepurge'} kind made by hand, automatic, or safety copy before a restore or a deletion
      * @returns {Promise<string>} what was done, for the log and the admin page
      */
     async createBackup(kind) {
@@ -856,7 +858,7 @@ class PiAgent extends utils.Adapter {
         if (kind === 'auto') {
             await this.pruneStoredBackups();
         }
-        if (kind !== 'prerestore') {
+        if (kind === 'manual' || kind === 'auto') {
             const remote = await this.copyToRemote({ name, data });
             if (remote) {
                 message += remote.ok
@@ -1032,6 +1034,39 @@ class PiAgent extends utils.Adapter {
             return;
         }
         await this.scheduleAutoBackup();
+    }
+
+    /**
+     * At the start, before the store is opened: delete the conversations queued by "New conversation" (lib/purge.js),
+     * after a safety copy. A failure leaves the store as it was; the agent starts in any case.
+     */
+    async purgeConversations() {
+        const dir = utils.getAbsoluteInstanceDataDir(this);
+        if (queuedPurges(dir).length === 0) {
+            return;
+        }
+        try {
+            const stored = await this.getStateAsync('telegram.chats');
+            const chats = stored?.val ? JSON.parse(String(stored.val)) : {};
+            const inUse = new Set(Object.values(Object(chats)).map(String));
+            // the safety copy only when something is really deleted, not at every start while a reminder waits
+            if (purgeQueued(dir, inUse, { check: true }).deleted.length > 0) {
+                await this.createBackup('prepurge');
+            }
+            const { deleted, waiting, skipped } = purgeQueued(dir, inUse);
+            if (skipped) {
+                this.log.warn(`Old conversations are not deleted: ${skipped}`);
+            } else if (deleted.length > 0) {
+                this.log.info(`${deleted.length} old conversation(s) deleted from the store`);
+            }
+            if (waiting.length > 0) {
+                this.log.info(
+                    `${waiting.length} old conversation(s) are deleted later: a reminder of theirs is not due yet`,
+                );
+            }
+        } catch (e) {
+            this.log.warn(`Old conversations could not be deleted: ${e.message}`);
+        }
     }
 
     /**
@@ -1284,9 +1319,9 @@ class PiAgent extends utils.Adapter {
     /**
      * Commands of the chat in the admin tab (admin/tab.html). The page polls chatHistory while a request runs.
      *
-     * @param {string} command chatHistory, chatSend, chatConfirm or chatNew
+     * @param {string} command chatHistory, chatSend, chatConfirm, chatNew or chatConversations
      * @param {string} user ioBroker user of the admin session
-     * @param {{ text?: unknown, nonce?: unknown, answer?: unknown }} message message of the page
+     * @param {{ text?: unknown, nonce?: unknown, answer?: unknown, conversation?: unknown }} message message of the page
      * @returns {Promise<object>} answer for the page
      */
     async onAdminChat(command, user, message) {
@@ -1317,34 +1352,122 @@ class PiAgent extends utils.Adapter {
             if (busy()) {
                 return { error: 'busy' };
             }
+            // the old conversation is deleted from the store at the next start (lib/purge.js)
+            queuePurge(utils.getAbsoluteInstanceDataDir(this), this.chats[key]);
             delete this.chats[key];
             await this.setStateAsync('telegram.chats', { val: JSON.stringify(this.chats), ack: true });
             this.adminChat.clear(user);
             this.log.info(`Admin chat of ${user}: new conversation`);
             return { ok: true };
         }
-        // chatHistory
-        let entries = [];
-        const conversation = this.chats[key] ? await this.harness?.conversation(this.chats[key], this.context) : null;
-        if (conversation) {
-            const view = await conversation.viewState(this.context);
-            try {
-                entries = historyOf(view.value.entries);
-            } finally {
-                view.dispose?.();
-            }
+        const isAdmin = await this.isAdministrator(user);
+        if (command === 'chatConversations') {
+            return { conversations: this.conversationList(user, isAdmin) };
         }
-        const notices = this.adminChat.notices(user);
-        return {
+        // chatHistory: the user's own conversation, or (administrators only, read only) any other one
+        const status = {
             running: Boolean(this.root),
             model: this.model ? `${this.model.provider}/${this.model.modelId}` : '',
             simulation: Boolean(this.config.dryRun),
             user,
+            administrator: isAdmin,
+        };
+        const other = String(message.conversation || '');
+        if (other && other !== key) {
+            if (!isAdmin || !this.chats[other]) {
+                return { error: isAdmin ? 'unknownConversation' : 'forbidden' };
+            }
+            return {
+                ...status,
+                conversation: other,
+                readOnly: true,
+                busy: this.queues.has(other),
+                question: null,
+                error: null,
+                entries: await this.historyOfKey(other),
+            };
+        }
+        return {
+            ...status,
+            conversation: key,
+            readOnly: false,
             busy: busy(),
             question: this.adminChat.question(user),
             error: this.adminChat.error(user),
-            entries: withNotices(entries, notices),
+            entries: withNotices(await this.historyOfKey(key), this.adminChat.notices(user)),
         };
+    }
+
+    /**
+     * The messages of a conversation of telegram.chats as the admin page shows them.
+     *
+     * @param {string} key key in telegram.chats
+     * @returns {Promise<Array<object>>} messages, oldest first; empty when the conversation does not exist
+     */
+    async historyOfKey(key) {
+        const conversation = this.chats[key] ? await this.harness?.conversation(this.chats[key], this.context) : null;
+        if (!conversation) {
+            return [];
+        }
+        const view = await conversation.viewState(this.context);
+        try {
+            return historyOf(view.value.entries);
+        } finally {
+            view.dispose?.();
+        }
+    }
+
+    /**
+     * Whether an ioBroker user is in the group "administrator" (only they may read the conversations of others).
+     *
+     * @param {string} user e.g. "system.user.admin"
+     * @returns {Promise<boolean>} true for an administrator
+     */
+    async isAdministrator(user) {
+        if (user === 'system.user.admin') {
+            return true;
+        }
+        try {
+            const group = await this.getForeignObjectAsync('system.group.administrator');
+            const members = Object(group?.common).members;
+            return Array.isArray(members) && members.includes(user);
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * The conversations the admin page offers: the user's own chat first, for an administrator also the chats of the
+     * messengers, of the other admin users and of sendTo callers such as ioBroker.assistant.
+     *
+     * @param {string} user ioBroker user of the page
+     * @param {boolean} isAdmin whether the user may read the others
+     * @returns {Array<{ key: string, kind: string, source: string, name: string, own: boolean }>} conversations
+     */
+    conversationList(user, isAdmin) {
+        const own = chatKey(ADMIN, user);
+        const list = [{ key: own, kind: 'admin', source: ADMIN, name: user.replace(/^system\.user\./, ''), own: true }];
+        if (!isAdmin) {
+            return list;
+        }
+        const others = Object.keys(this.chats)
+            .filter(key => key !== own)
+            .map(key => {
+                const { instance, chatId } = parseChatKey(key, this.firstChannel());
+                const sendTo = instance.startsWith('sendTo:');
+                return {
+                    key,
+                    kind: instance === ADMIN ? 'admin' : sendTo ? 'sendTo' : 'chat',
+                    source: sendTo ? instance.slice('sendTo:'.length) : instance,
+                    name: instance === ADMIN ? chatId.replace(/^system\.user\./, '') : chatId,
+                    own: false,
+                };
+            })
+            .sort(
+                (a, b) =>
+                    a.kind.localeCompare(b.kind) || a.source.localeCompare(b.source) || a.name.localeCompare(b.name),
+            );
+        return [...list, ...others];
     }
 
     /**
@@ -1448,7 +1571,7 @@ class PiAgent extends utils.Adapter {
             }
             return;
         }
-        if (['chatHistory', 'chatSend', 'chatConfirm', 'chatNew'].includes(String(obj?.command))) {
+        if (['chatHistory', 'chatSend', 'chatConfirm', 'chatNew', 'chatConversations'].includes(String(obj?.command))) {
             let answer;
             try {
                 answer = await this.onAdminChat(obj.command, adminUser(obj), Object(obj.message));

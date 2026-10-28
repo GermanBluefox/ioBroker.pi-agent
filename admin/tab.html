@@ -37,6 +37,9 @@
             * {
                 box-sizing: border-box;
             }
+            [hidden] {
+                display: none !important;
+            }
             html,
             body {
                 height: 100%;
@@ -134,6 +137,55 @@
             .tool::before {
                 content: '\2699\FE0E  ';
             }
+            .tool .result {
+                color: var(--text);
+                opacity: 0.75;
+            }
+            .tool .ms,
+            .summary {
+                color: var(--muted);
+            }
+            .tool.failed {
+                color: var(--error);
+            }
+            .summary {
+                align-self: flex-start;
+                font-size: 12px;
+                margin-top: -6px;
+            }
+            .summary .provider {
+                background: var(--accent);
+                color: #ffffff;
+                border-radius: 8px;
+                padding: 0 6px;
+                margin-right: 6px;
+            }
+            .readonly {
+                align-self: stretch;
+                text-align: center;
+                font-size: 12px;
+                color: var(--muted);
+                border: 1px dashed var(--border);
+                border-radius: 6px;
+                padding: 4px;
+            }
+            header select {
+                font: inherit;
+                color: var(--text);
+                background: var(--bg);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                padding: 4px 6px;
+                max-width: 260px;
+            }
+            header label {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                color: var(--muted);
+                font-size: 13px;
+                cursor: pointer;
+            }
             .error {
                 align-self: stretch;
                 background: var(--error-bg);
@@ -196,6 +248,8 @@
             <span class="info" id="model"></span>
             <span class="badge" id="simulation" hidden></span>
             <span class="spacer"></span>
+            <select id="conversation" hidden></select>
+            <label><input type="checkbox" id="details" /> <span id="detailsLabel"></span></label>
             <button id="new"></button>
         </header>
         <div id="messages"></div>
@@ -212,17 +266,17 @@
             const TEXTS = {
                 newConversation: ['New conversation', 'Neue Unterhaltung', 'Новая беседа', 'Nova conversa', 'Nieuw gesprek', 'Nouvelle conversation', 'Nuova conversazione', 'Nueva conversación', 'Nowa rozmowa', 'Нова розмова', '新对话'],
                 confirmNew: [
-                    'Start a new conversation? The agent forgets the current one.',
-                    'Neue Unterhaltung beginnen? Der Agent vergisst die bisherige.',
-                    'Начать новую беседу? Агент забудет текущую.',
-                    'Começar uma nova conversa? O agente esquece a atual.',
-                    'Een nieuw gesprek beginnen? De agent vergeet het huidige.',
-                    "Commencer une nouvelle conversation ? L'agent oublie l'actuelle.",
-                    "Iniziare una nuova conversazione? L'agente dimentica quella attuale.",
-                    '¿Empezar una nueva conversación? El agente olvida la actual.',
-                    'Rozpocząć nową rozmowę? Agent zapomni obecną.',
-                    'Почати нову розмову? Агент забуде поточну.',
-                    '开始新对话？代理会忘记当前对话。',
+                    'Start a new conversation? The current one is deleted for good at the next start of the instance (a backup keeps it).',
+                    'Neue Unterhaltung beginnen? Die bisherige wird beim nächsten Start der Instanz endgültig gelöscht (ein Backup behält sie).',
+                    'Начать новую беседу? Текущая будет окончательно удалена при следующем старте инстанса (в бэкапе она останется).',
+                    'Começar uma nova conversa? A atual é apagada definitivamente no próximo arranque da instância (um backup guarda-a).',
+                    'Een nieuw gesprek beginnen? Het huidige wordt bij de volgende start van de instantie definitief verwijderd (een back-up bewaart het).',
+                    "Commencer une nouvelle conversation ? L'actuelle est supprimée définitivement au prochain démarrage de l'instance (une sauvegarde la conserve).",
+                    "Iniziare una nuova conversazione? Quella attuale viene eliminata definitivamente al prossimo avvio dell'istanza (un backup la conserva).",
+                    '¿Empezar una nueva conversación? La actual se borra definitivamente en el próximo arranque de la instancia (una copia de seguridad la conserva).',
+                    'Rozpocząć nową rozmowę? Obecna zostanie trwale usunięta przy następnym uruchomieniu instancji (kopia zapasowa ją zachowa).',
+                    'Почати нову розмову? Поточну буде остаточно видалено під час наступного запуску інстансу (у бекапі вона залишиться).',
+                    '开始新对话？当前对话将在实例下次启动时被永久删除（备份中会保留）。',
                 ],
                 placeholder: [
                     'Ask the agent (Enter sends, Shift+Enter for a new line)',
@@ -295,6 +349,23 @@
                     'Запитайте щось про свій розумний дім, наприклад: чи увімкнене світло у вітальні?',
                     '问一些关于智能家居的问题，例如：客厅的灯开着吗？',
                 ],
+                details: ['Details', 'Details', 'Подробности', 'Detalhes', 'Details', 'Détails', 'Dettagli', 'Detalles', 'Szczegóły', 'Подробиці', '详情'],
+                myChat: ['My chat', 'Mein Chat', 'Мой чат', 'O meu chat', 'Mijn chat', 'Mon chat', 'La mia chat', 'Mi chat', 'Mój czat', 'Мій чат', '我的聊天'],
+                adminChat: ['Admin chat', 'Admin-Chat', 'Чат admin', 'Chat do admin', 'Admin-chat', 'Chat admin', 'Chat admin', 'Chat del admin', 'Czat admina', 'Чат admin', '管理聊天'],
+                readOnly: [
+                    'Read only: the conversation of %name. Its answers go to %source.',
+                    'Nur lesen: die Unterhaltung von %name. Ihre Antworten gehen an %source.',
+                    'Только чтение: беседа %name. Её ответы уходят в %source.',
+                    'Só leitura: a conversa de %name. As respostas vão para %source.',
+                    'Alleen lezen: het gesprek van %name. De antwoorden gaan naar %source.',
+                    'Lecture seule : la conversation de %name. Ses réponses vont à %source.',
+                    'Sola lettura: la conversazione di %name. Le risposte vanno a %source.',
+                    'Solo lectura: la conversación de %name. Sus respuestas van a %source.',
+                    'Tylko do odczytu: rozmowa %name. Odpowiedzi trafiają do %source.',
+                    'Лише читання: розмова %name. Її відповіді йдуть до %source.',
+                    '只读：%name 的对话。其回答发送到 %source。',
+                ],
+                calls: ['%n model call(s)', '%n Modellaufruf(e)', 'вызовов модели: %n', '%n chamada(s) do modelo', '%n modelaanroep(en)', '%n appel(s) du modèle', '%n chiamata/e al modello', '%n llamada(s) al modelo', 'wywołania modelu: %n', 'викликів моделі: %n', '%n 次模型调用'],
             };
             let lang = 'en';
             const t = key => {
@@ -316,6 +387,27 @@
             const input = $('input');
             const sendButton = $('send');
             const newButton = $('new');
+            const picker = $('conversation');
+            const detailsBox = $('details');
+
+            // per browser: the details switch and the conversation that is open
+            const remember = (key, value) => {
+                try {
+                    localStorage.setItem(`pi-agent-${key}`, value);
+                } catch {
+                    // private window: not remembered
+                }
+            };
+            const recall = key => {
+                try {
+                    return localStorage.getItem(`pi-agent-${key}`) || '';
+                } catch {
+                    return '';
+                }
+            };
+            let showDetails = recall('details') === '1';
+            let selected = ''; // key of a conversation of someone else, '' = the own chat
+            let conversations = [];
 
             const socket = io.connect('/', { path: `${location.pathname.split('/').slice(0, -3).join('/')}/socket.io` });
             const target = `pi-agent.${instance}`;
@@ -346,15 +438,50 @@
                 return div;
             }
 
+            const number = n => Number(n || 0).toLocaleString(lang);
+
+            /** Name of a conversation in the list, e.g. "assistant.0 · kitchen". */
+            function conversationLabel(c) {
+                if (c.own) {
+                    return t('myChat');
+                }
+                return c.kind === 'admin' ? `${t('adminChat')} · ${c.name}` : `${c.source} · ${c.name}`;
+            }
+
+            /** A tool call: short, or with arguments, the start of the result and the time. */
+            function toolItem(entry) {
+                const d = entry.detail;
+                if (!showDetails || !d) {
+                    return item('tool', escapeHtml(entry.text));
+                }
+                const ms = Number.isFinite(d.ms) ? ` <span class="ms">${number(d.ms)} ms</span>` : '';
+                const result = d.result !== undefined ? ` → <span class="result">${escapeHtml(d.result)}</span>` : '';
+                return item(`tool${d.error ? ' failed' : ''}`, `${escapeHtml(d.name)}(${escapeHtml(d.args)})${result}${ms}`);
+            }
+
+            /** The line under the answer of a request: provider, model, time, tokens. */
+            function summaryItem(s) {
+                const parts = [escapeHtml(s.model || '')];
+                if (Number.isFinite(s.ms)) {
+                    parts.push(`${(s.ms / 1000).toLocaleString(lang, { maximumFractionDigits: 1 })} s`);
+                }
+                parts.push(`${number(s.input)} in`, `${number(s.output)} out`, `${number(s.cached)} cached`);
+                parts.push(escapeHtml(t('calls').replace('%n', number(s.calls))));
+                return item('summary', `<span class="provider">${escapeHtml(s.provider || '')}</span>${parts.join(' · ')}`);
+            }
+
             function render() {
                 $('model').textContent = state.model || '';
                 $('simulation').textContent = t('simulation');
                 $('simulation').hidden = !state.simulation;
+                const readOnly = Boolean(state.readOnly);
                 const busy = state.busy || pending;
-                sendButton.disabled = busy || offline || !state.running;
+                sendButton.disabled = busy || offline || !state.running || readOnly;
                 newButton.disabled = busy || offline || !state.running;
+                newButton.hidden = readOnly;
+                document.querySelector('footer').hidden = readOnly;
 
-                const key = JSON.stringify([state, offline, pending]);
+                const key = JSON.stringify([state, offline, pending, showDetails]);
                 if (key === shown) {
                     return;
                 }
@@ -365,6 +492,14 @@
                     messages.append(item('msg error', escapeHtml(t('offline'))));
                 } else if (!state.running) {
                     messages.append(item('msg error', escapeHtml(t('notRunning'))));
+                } else if (readOnly) {
+                    const c = conversations.find(x => x.key === state.conversation);
+                    if (c) {
+                        const text = t('readOnly')
+                            .replace('%name', `<b>${escapeHtml(c.name)}</b>`)
+                            .replace('%source', `<b>${escapeHtml(c.kind === 'admin' ? 'admin' : c.source)}</b>`);
+                        messages.append(item('readonly', text));
+                    }
                 } else if (!state.entries.length && !busy) {
                     messages.append(item('hint', escapeHtml(t('empty'))));
                 }
@@ -372,10 +507,13 @@
                     if (entry.role === 'user') {
                         messages.append(item('msg user', escapeHtml(entry.text)));
                     } else if (entry.role === 'tool') {
-                        messages.append(item('tool', escapeHtml(entry.text)));
+                        messages.append(toolItem(entry));
                     } else {
                         // HTML built by the adapter from escaped text (b, i, code, pre, http(s) links only)
                         messages.append(item(`msg ${entry.role === 'notice' ? 'notice' : 'assistant'}`, entry.html));
+                        if (showDetails && entry.summary) {
+                            messages.append(summaryItem(entry.summary));
+                        }
                     }
                 }
                 if (state.question) {
@@ -408,16 +546,60 @@
 
             async function refresh() {
                 clearTimeout(timer);
-                const answer = await sendTo('chatHistory');
+                const answer = await sendTo('chatHistory', selected ? { conversation: selected } : {});
+                if (answer.error === 'forbidden' || answer.error === 'unknownConversation') {
+                    // the conversation is gone, or the user may not read it: back to the own chat
+                    selectConversation('');
+                    return;
+                }
                 offline = Boolean(answer.error);
                 if (!offline) {
                     state = answer;
                     pending = false;
                 }
                 render();
-                // fast while the agent works, slowly otherwise (reminders, other admin sessions)
-                timer = setTimeout(refresh, state.busy || state.question ? 1500 : 10000);
+                // fast while the agent works, slowly otherwise (reminders, other sessions, requests of other sources)
+                timer = setTimeout(refresh, state.busy || state.question ? 1500 : selected ? 3000 : 10000);
             }
+
+            /** The list of conversations; shown only when there is more than the own chat (administrators). */
+            async function loadConversations() {
+                const answer = await sendTo('chatConversations');
+                if (!Array.isArray(answer.conversations)) {
+                    return;
+                }
+                conversations = answer.conversations;
+                picker.textContent = '';
+                for (const c of conversations) {
+                    const option = document.createElement('option');
+                    option.value = c.own ? '' : c.key;
+                    option.textContent = conversationLabel(c);
+                    picker.append(option);
+                }
+                if (selected && !conversations.some(c => c.key === selected)) {
+                    selected = '';
+                }
+                picker.value = selected;
+                picker.hidden = conversations.length < 2;
+            }
+
+            function selectConversation(key) {
+                selected = key;
+                remember('conversation', key);
+                picker.value = key;
+                state = { running: true, busy: false, entries: [] };
+                shown = '';
+                refresh();
+            }
+
+            picker.addEventListener('mousedown', loadConversations);
+            picker.addEventListener('change', () => selectConversation(picker.value));
+            detailsBox.checked = showDetails;
+            detailsBox.addEventListener('change', () => {
+                showDetails = detailsBox.checked;
+                remember('details', showDetails ? '1' : '');
+                render();
+            });
 
             async function send() {
                 const text = input.value.trim();
@@ -467,17 +649,26 @@
                 newButton.textContent = `+ ${t('newConversation')}`;
                 sendButton.textContent = t('send');
                 input.placeholder = t('placeholder');
+                $('detailsLabel').textContent = t('details');
+                for (const option of picker.options) {
+                    const c = conversations.find(x => (x.own ? '' : x.key) === option.value);
+                    if (c) {
+                        option.textContent = conversationLabel(c);
+                    }
+                }
                 shown = '';
                 render();
             }
 
-            socket.on('connect', () => {
+            socket.on('connect', async () => {
                 socket.emit('getObject', 'system.config', (err, obj) => {
                     if (!err && obj && obj.common && LANGS.includes(obj.common.language)) {
                         lang = obj.common.language;
                     }
                     applyLanguage();
                 });
+                selected = recall('conversation');
+                await loadConversations();
                 refresh();
             });
             socket.on('disconnect', () => {

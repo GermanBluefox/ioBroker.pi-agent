@@ -23,7 +23,7 @@
 							"value": "central"
 						}
 					],
-					"default": "system",
+					"default": "adapter",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
@@ -34,6 +34,16 @@
 					"type": "staticText",
 					"text": "Provider, model and API key come from the system settings of admin, tab \"AI\". A change there restarts the instance.",
 					"hidden": "data.keySource !== 'system'",
+					"xs": 12,
+					"sm": 6,
+					"md": 8,
+					"lg": 8,
+					"xl": 8
+				},
+				"_systemAiFallback": {
+					"type": "staticText",
+					"text": "No API key entered: the system-wide AI settings of admin (System settings, tab \"AI\") are used.",
+					"hidden": "data.keySource !== 'adapter' || !!data.apiKey || data.provider === 'custom'",
 					"xs": 12,
 					"sm": 6,
 					"md": 8,

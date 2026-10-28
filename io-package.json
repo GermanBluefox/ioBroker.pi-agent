@@ -1,8 +1,21 @@
 {
 	"common": {
 		"name": "pi-agent",
-		"version": "0.4.0",
+		"version": "0.5.0",
 		"news": {
+			"0.5.0": {
+				"en": "System-wide AI settings of admin as key source, Google Gemini and OpenRouter, own conversations for sendTo callers such as ioBroker.assistant (by GermanBluefox); admin chat: switch \"Details\" with tools, results, times and tokens, and administrators can read the conversations of the messengers and of ioBroker.assistant; \"New conversation\" deletes the old one from the store at the next start",
+				"de": "Systemweite KI-Einstellungen von Admin als Schlüssel-Quelle, Google Gemini und OpenRouter, eigene Unterhaltungen für sendTo-Aufrufer wie ioBroker.assistant (von GermanBluefox); Admin-Chat: Schalter „Details“ mit Werkzeugen, Ergebnissen, Zeiten und Tokens, und Administratoren können die Unterhaltungen der Messenger und von ioBroker.assistant lesen; „Neue Unterhaltung“ löscht die bisherige beim nächsten Start aus dem Speicher",
+				"ru": "Общесистемные настройки ИИ в admin как источник ключа, Google Gemini и OpenRouter, отдельные беседы для вызовов sendTo, например ioBroker.assistant (от GermanBluefox); чат в admin: переключатель «Подробности» с инструментами, результатами, временем и токенами, а администраторы могут читать беседы мессенджеров и ioBroker.assistant; «Новая беседа» удаляет старую из хранилища при следующем старте",
+				"pt": "Definições de IA de todo o sistema no admin como origem da chave, Google Gemini e OpenRouter, conversas próprias para chamadas sendTo como o ioBroker.assistant (de GermanBluefox); chat do admin: interruptor \"Detalhes\" com ferramentas, resultados, tempos e tokens, e os administradores podem ler as conversas dos mensageiros e do ioBroker.assistant; \"Nova conversa\" apaga a anterior do armazenamento no próximo arranque",
+				"nl": "Systeembrede AI-instellingen van admin als sleutelbron, Google Gemini en OpenRouter, eigen gesprekken voor sendTo-aanroepers zoals ioBroker.assistant (door GermanBluefox); admin-chat: schakelaar \"Details\" met tools, resultaten, tijden en tokens, en beheerders kunnen de gesprekken van de messengers en van ioBroker.assistant lezen; \"Nieuw gesprek\" verwijdert het vorige bij de volgende start uit de opslag",
+				"fr": "Paramètres d'IA de tout le système dans admin comme source de clé, Google Gemini et OpenRouter, conversations propres pour les appelants sendTo comme ioBroker.assistant (par GermanBluefox) ; chat admin : interrupteur « Détails » avec outils, résultats, durées et jetons, et les administrateurs peuvent lire les conversations des messageries et d'ioBroker.assistant ; « Nouvelle conversation » supprime l'ancienne du stockage au prochain démarrage",
+				"it": "Impostazioni IA di sistema di admin come origine della chiave, Google Gemini e OpenRouter, conversazioni proprie per i chiamanti sendTo come ioBroker.assistant (di GermanBluefox); chat admin: interruttore «Dettagli» con strumenti, risultati, tempi e token, e gli amministratori possono leggere le conversazioni dei messenger e di ioBroker.assistant; «Nuova conversazione» elimina la precedente dalla memoria al prossimo avvio",
+				"es": "Ajustes de IA de todo el sistema en admin como origen de la clave, Google Gemini y OpenRouter, conversaciones propias para los llamantes sendTo como ioBroker.assistant (de GermanBluefox); chat del admin: interruptor «Detalles» con herramientas, resultados, tiempos y tokens, y los administradores pueden leer las conversaciones de los mensajeros y de ioBroker.assistant; «Nueva conversación» borra la anterior del almacén en el próximo arranque",
+				"pl": "Ogólnosystemowe ustawienia AI w adminie jako źródło klucza, Google Gemini i OpenRouter, własne rozmowy dla wywołań sendTo, np. ioBroker.assistant (od GermanBluefox); czat admina: przełącznik „Szczegóły” z narzędziami, wynikami, czasami i tokenami, a administratorzy mogą czytać rozmowy komunikatorów i ioBroker.assistant; „Nowa rozmowa” usuwa poprzednią z magazynu przy następnym uruchomieniu",
+				"uk": "Загальносистемні налаштування ШІ в admin як джерело ключа, Google Gemini і OpenRouter, окремі розмови для викликів sendTo, наприклад ioBroker.assistant (від GermanBluefox); чат admin: перемикач «Подробиці» з інструментами, результатами, часом і токенами, а адміністратори можуть читати розмови месенджерів та ioBroker.assistant; «Нова розмова» видаляє попередню зі сховища під час наступного запуску",
+				"zh-cn": "admin 系统级 AI 设置作为密钥来源，Google Gemini 和 OpenRouter，为 ioBroker.assistant 等 sendTo 调用方提供独立对话（由 GermanBluefox 提供）；管理聊天：“详情”开关显示工具、结果、时间和令牌，管理员可阅读即时通讯和 ioBroker.assistant 的对话；“新对话”会在下次启动时从存储中删除旧对话"
+			},
 			"0.4.0": {
 				"en": "Tab \"Backup\": backups of the conversations by hand and automatic (daily or weekly) in the storage folder, which the ioBroker backup contains; copy to an external server over SFTP; restore from both",
 				"de": "Reiter „Backup“: Backups der Unterhaltungen manuell und automatisch (täglich oder wöchentlich) im Speicherordner, der im ioBroker-Backup enthalten ist; Kopie auf einen externen Server per SFTP; Wiederherstellung aus beiden",
@@ -80,19 +93,6 @@
 				"pl": "Potwierdzanie zapisów przyciskami w Telegramie; przypomnienia; wartości z historii; zużycie tokenów i koszt; lokalna strefa czasowa",
 				"uk": "Підтвердження запису кнопками в Telegram; нагадування; значення з історії; витрата токенів і вартість; місцевий часовий пояс",
 				"zh-cn": "通过 Telegram 按钮确认写入；提醒；历史值；令牌用量和费用；本地时区"
-			},
-			"0.0.3": {
-				"en": "Conversations are stored in SQLite (less memory); Telegram chats no longer wait for each other; safer Telegram formatting",
-				"de": "Unterhaltungen werden in SQLite gespeichert (weniger Speicher); Telegram-Chats warten nicht mehr aufeinander; sicherere Telegram-Formatierung",
-				"ru": "Беседы хранятся в SQLite (меньше памяти); чаты Telegram больше не ждут друг друга; более надёжное форматирование в Telegram",
-				"pt": "As conversas são guardadas em SQLite (menos memória); os chats do Telegram já não esperam uns pelos outros; formatação do Telegram mais segura",
-				"nl": "Gesprekken worden in SQLite opgeslagen (minder geheugen); Telegram-chats wachten niet meer op elkaar; veiligere Telegram-opmaak",
-				"fr": "Les conversations sont stockées dans SQLite (moins de mémoire) ; les discussions Telegram ne s’attendent plus ; mise en forme Telegram plus sûre",
-				"it": "Le conversazioni sono salvate in SQLite (meno memoria); le chat Telegram non si aspettano più a vicenda; formattazione Telegram più sicura",
-				"es": "Las conversaciones se guardan en SQLite (menos memoria); los chats de Telegram ya no se esperan entre sí; formato de Telegram más seguro",
-				"pl": "Rozmowy są zapisywane w SQLite (mniej pamięci); czaty Telegram nie czekają już na siebie; bezpieczniejsze formatowanie Telegram",
-				"uk": "Розмови зберігаються в SQLite (менше памʼяті); чати Telegram більше не чекають один на одного; надійніше форматування в Telegram",
-				"zh-cn": "对话保存在 SQLite 中（占用内存更少）；Telegram 聊天不再相互等待；Telegram 格式更安全"
 			}
 		},
 		"titleLang": {
@@ -189,7 +189,7 @@
 		"provider": "anthropic",
 		"modelId": "",
 		"baseUrl": "",
-		"keySource": "system",
+		"keySource": "adapter",
 		"apiKey": "",
 		"credentialId": "",
 		"writeRules": [],

@@ -1043,6 +1043,19 @@ Object.assign(ADMIN, {
             'Розмови агента буде замінено вибраним бекапом із сервера, і інстанс перезапуститься. Поточні розмови перед цим зберігаються як страхувальна копія. Продовжити?',
             '代理的对话将被服务器上所选的备份替换，实例将重启。当前对话会先保存为安全副本。继续吗？',
         ],
+    'No API key entered: the system-wide AI settings of admin (System settings, tab "AI") are used.': [
+        'No API key entered: the system-wide AI settings of admin (System settings, tab "AI") are used.',
+        'Kein API-Schlüssel eingegeben: Die systemweiten KI-Einstellungen von Admin (Systemeinstellungen, Reiter „KI“) werden verwendet.',
+        'API-ключ не введён: используются общесистемные настройки ИИ в admin (системные настройки, вкладка «ИИ»).',
+        'Nenhuma chave de API introduzida: são usadas as definições de IA de todo o sistema no admin (definições do sistema, separador "IA").',
+        'Geen API-sleutel ingevoerd: de systeembrede AI-instellingen van admin (systeeminstellingen, tabblad "AI") worden gebruikt.',
+        "Aucune clé API saisie : les paramètres d'IA de tout le système dans admin (paramètres système, onglet « IA ») sont utilisés.",
+        'Nessuna chiave API inserita: vengono usate le impostazioni IA di sistema di admin (impostazioni di sistema, scheda «IA»).',
+        'No se ha introducido ninguna clave de API: se usan los ajustes de IA de todo el sistema en admin (ajustes del sistema, pestaña «IA»).',
+        'Nie wprowadzono klucza API: używane są ogólnosystemowe ustawienia AI w adminie (ustawienia systemu, zakładka „AI”).',
+        'API-ключ не введено: використовуються загальносистемні налаштування ШІ в admin (системні налаштування, вкладка «ШІ»).',
+        '未输入 API 密钥：将使用 admin 的系统级 AI 设置（系统设置，“AI”选项卡）。',
+    ],
     'Allowed users': [
         'Allowed users',
         'Erlaubte Nutzer',
@@ -1074,6 +1087,19 @@ const DESC = [
 ];
 /** common.news per version, newest first; the repository builder keeps at most seven. */
 const NEWS = {};
+NEWS['0.5.0'] = [
+    'System-wide AI settings of admin as key source, Google Gemini and OpenRouter, own conversations for sendTo callers such as ioBroker.assistant (by GermanBluefox); admin chat: switch "Details" with tools, results, times and tokens, and administrators can read the conversations of the messengers and of ioBroker.assistant; "New conversation" deletes the old one from the store at the next start',
+    'Systemweite KI-Einstellungen von Admin als Schlüssel-Quelle, Google Gemini und OpenRouter, eigene Unterhaltungen für sendTo-Aufrufer wie ioBroker.assistant (von GermanBluefox); Admin-Chat: Schalter „Details“ mit Werkzeugen, Ergebnissen, Zeiten und Tokens, und Administratoren können die Unterhaltungen der Messenger und von ioBroker.assistant lesen; „Neue Unterhaltung“ löscht die bisherige beim nächsten Start aus dem Speicher',
+    'Общесистемные настройки ИИ в admin как источник ключа, Google Gemini и OpenRouter, отдельные беседы для вызовов sendTo, например ioBroker.assistant (от GermanBluefox); чат в admin: переключатель «Подробности» с инструментами, результатами, временем и токенами, а администраторы могут читать беседы мессенджеров и ioBroker.assistant; «Новая беседа» удаляет старую из хранилища при следующем старте',
+    'Definições de IA de todo o sistema no admin como origem da chave, Google Gemini e OpenRouter, conversas próprias para chamadas sendTo como o ioBroker.assistant (de GermanBluefox); chat do admin: interruptor "Detalhes" com ferramentas, resultados, tempos e tokens, e os administradores podem ler as conversas dos mensageiros e do ioBroker.assistant; "Nova conversa" apaga a anterior do armazenamento no próximo arranque',
+    'Systeembrede AI-instellingen van admin als sleutelbron, Google Gemini en OpenRouter, eigen gesprekken voor sendTo-aanroepers zoals ioBroker.assistant (door GermanBluefox); admin-chat: schakelaar "Details" met tools, resultaten, tijden en tokens, en beheerders kunnen de gesprekken van de messengers en van ioBroker.assistant lezen; "Nieuw gesprek" verwijdert het vorige bij de volgende start uit de opslag',
+    "Paramètres d'IA de tout le système dans admin comme source de clé, Google Gemini et OpenRouter, conversations propres pour les appelants sendTo comme ioBroker.assistant (par GermanBluefox) ; chat admin : interrupteur « Détails » avec outils, résultats, durées et jetons, et les administrateurs peuvent lire les conversations des messageries et d'ioBroker.assistant ; « Nouvelle conversation » supprime l'ancienne du stockage au prochain démarrage",
+    'Impostazioni IA di sistema di admin come origine della chiave, Google Gemini e OpenRouter, conversazioni proprie per i chiamanti sendTo come ioBroker.assistant (di GermanBluefox); chat admin: interruttore «Dettagli» con strumenti, risultati, tempi e token, e gli amministratori possono leggere le conversazioni dei messenger e di ioBroker.assistant; «Nuova conversazione» elimina la precedente dalla memoria al prossimo avvio',
+    'Ajustes de IA de todo el sistema en admin como origen de la clave, Google Gemini y OpenRouter, conversaciones propias para los llamantes sendTo como ioBroker.assistant (de GermanBluefox); chat del admin: interruptor «Detalles» con herramientas, resultados, tiempos y tokens, y los administradores pueden leer las conversaciones de los mensajeros y de ioBroker.assistant; «Nueva conversación» borra la anterior del almacén en el próximo arranque',
+    'Ogólnosystemowe ustawienia AI w adminie jako źródło klucza, Google Gemini i OpenRouter, własne rozmowy dla wywołań sendTo, np. ioBroker.assistant (od GermanBluefox); czat admina: przełącznik „Szczegóły” z narzędziami, wynikami, czasami i tokenami, a administratorzy mogą czytać rozmowy komunikatorów i ioBroker.assistant; „Nowa rozmowa” usuwa poprzednią z magazynu przy następnym uruchomieniu',
+    'Загальносистемні налаштування ШІ в admin як джерело ключа, Google Gemini і OpenRouter, окремі розмови для викликів sendTo, наприклад ioBroker.assistant (від GermanBluefox); чат admin: перемикач «Подробиці» з інструментами, результатами, часом і токенами, а адміністратори можуть читати розмови месенджерів та ioBroker.assistant; «Нова розмова» видаляє попередню зі сховища під час наступного запуску',
+    'admin 系统级 AI 设置作为密钥来源，Google Gemini 和 OpenRouter，为 ioBroker.assistant 等 sendTo 调用方提供独立对话（由 GermanBluefox 提供）；管理聊天：“详情”开关显示工具、结果、时间和令牌，管理员可阅读即时通讯和 ioBroker.assistant 的对话；“新对话”会在下次启动时从存储中删除旧对话',
+];
 NEWS['0.4.0'] = [
     'Tab "Backup": backups of the conversations by hand and automatic (daily or weekly) in the storage folder, which the ioBroker backup contains; copy to an external server over SFTP; restore from both',
     'Reiter „Backup“: Backups der Unterhaltungen manuell und automatisch (täglich oder wöchentlich) im Speicherordner, der im ioBroker-Backup enthalten ist; Kopie auf einen externen Server per SFTP; Wiederherstellung aus beiden',

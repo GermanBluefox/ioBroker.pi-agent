@@ -77,5 +77,6 @@
 	"e.g. /backups/pi-agent, created when it is missing": "e.g. /backups/pi-agent, created when it is missing",
 	"After a new installation of ioBroker: enter the SFTP settings above, switch the copy on and save. Then choose a backup on the server and restore it. The file is fetched into the storage folder and the conversations are replaced; the current conversations are saved first as a safety copy.": "After a new installation of ioBroker: enter the SFTP settings above, switch the copy on and save. Then choose a backup on the server and restore it. The file is fetched into the storage folder and the conversations are replaced; the current conversations are saved first as a safety copy.",
 	"The conversations of the agent are replaced by the chosen backup from the server and the instance restarts. The current conversations are saved first as a safety copy. Continue?": "The conversations of the agent are replaced by the chosen backup from the server and the instance restarts. The current conversations are saved first as a safety copy. Continue?",
+	"No API key entered: the system-wide AI settings of admin (System settings, tab \"AI\") are used.": "No API key entered: the system-wide AI settings of admin (System settings, tab \"AI\") are used.",
 	"Allowed users": "Allowed users"
 }

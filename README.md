@@ -44,7 +44,7 @@ The settings have four tabs: **General**, **Write permissions**, **Messengers** 
 
 | Setting         | Meaning                                                                          |
 | --------------- | -------------------------------------------------------------------------------- |
-| Key source      | **System-wide AI settings of admin** (default for new instances): provider, model, base URL and key come from the system settings of admin, tab "AI" (object `system.ai`); a change there restarts the instance. **Store the key in the adapter** or **Central credential store**: the settings below. An instance with neither a key nor an OpenAI-compatible server of its own also takes the system-wide settings. |
+| Key source      | **System-wide AI settings of admin**: provider, model, base URL and key come from the system settings of admin, tab "AI" (object `system.ai`); a change there restarts the instance. **Store the key in the adapter** or **Central credential store**: the settings below. An instance with neither a key nor an OpenAI-compatible server of its own also takes the system-wide settings, so a new instance works without any setting once they are set up. |
 | Provider, Model | The language model. The model field lists the models of the chosen provider (the instance must be running for the list); any other model ID can be typed in. Empty: the default of the provider (`claude-sonnet-5-5`, `gpt-6-sol`, `deepseek-flash`, `gemini-3.5-flash`, `anthropic/claude-sonnet-5.5`). |
 | Base URL        | Only for **OpenAI-compatible (own URL)**: the endpoint of the server, see below. |
 | API key         | **Store the key in the adapter** (the field "API key", stored encrypted) or **Central credential store**: a credential of the central credential store of admin 8, chosen in "API key credential". A changed credential restarts the instance with the new key. |
@@ -83,11 +83,20 @@ Start with simulation mode on, watch the log, and only then switch it off.
 
 The menu entry **Pi Agent** on the left side of the admin opens a chat with the agent:
 
-- Every ioBroker user has a conversation of their own; **New conversation** starts over.
+- Every ioBroker user has a conversation of their own; **New conversation** starts over. The old conversation is
+  deleted from the store at the next start of the instance, after a safety copy (`pi-agent-prepurge-….sqlite.gz` in the
+  backup folder). A conversation with a reminder that is not due yet is deleted after the reminder. The deletion relies
+  on the storage schema of Pi Durable; with an unknown schema version (after an update of Pi Durable) nothing is deleted.
 - The answer is shown formatted, with the tool calls of the agent above it.
 - A write on the "Confirmation required" list is asked in the chat with ✅/❌ buttons.
 - A request keeps running when the page is closed; the answer is in the chat when it is opened again.
 - Reminders of the conversation appear in the chat (kept until the adapter restarts).
+- **Details** (remembered in the browser) shows under every answer the provider, the model, the time, the tokens
+  (in, out, cached) and the number of model calls, and for every tool call its arguments, the start of its result and
+  its time; a blocked or failed call is red.
+- Administrators (group "administrator") choose in the list at the top another conversation: the chats of the
+  messengers, of the other admin users and of `sendTo` callers such as ioBroker.assistant (one per room or satellite).
+  These are shown read only, and refreshed every few seconds.
 
 ### States and scripts
 
@@ -219,11 +228,16 @@ the last copy.
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
 
-- The system-wide AI settings of admin (System settings, tab "AI") can be used: new key source, default for new instances; an instance without a key of its own takes them too
+### 0.5.0 (2026-10-28)
+
+- The system-wide AI settings of admin (System settings, tab "AI") can be used: new key source; an instance without a key of its own takes them too
 - Google Gemini and OpenRouter as providers (OpenRouter: one key for the models of many vendors, model IDs as `vendor/model`)
 - sendTo `ask` accepts `conversation` and `instructions`: a conversation of its own per caller conversation, e.g. one per room of a voice assistant
+- The three points above by GermanBluefox; an instance updated from 0.2.0 or older keeps its own key
+- Admin chat: switch "Details" with the tool calls, their results and times, and the tokens of every request
+- Admin chat: administrators can read the other conversations (messengers, other admin users, ioBroker.assistant)
+- Admin chat: "New conversation" deletes the old conversation from the store at the next start (after a safety copy)
 
 ### 0.4.0 (2026-10-28)
 
@@ -251,11 +265,6 @@ the last copy.
 - Write permissions: a table of scopes (instance, object ID or pattern with `*`) with the checkboxes "Write allowed" and "Confirmation required", and a button that adds the installed instances; the regular expressions stay under "Advanced"
 - The settings have three tabs: General, Write permissions, Messengers
 - "Dry run" is now called "Simulation mode (nothing is switched)"
-
-### 0.0.5 (2026-10-26)
-
-- Model field: a list of the models of the chosen provider, a model ID can still be typed in
-- Fix: sendTo (e.g. `ask` from scripts, the model list) never reached the adapter, because `supportedMessages: {custom: false}` switched the message box off; the outdated key is removed from the instance at the first start, which restarts the instance once
 
 Older changelog entries can be found in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 

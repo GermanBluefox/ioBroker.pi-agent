@@ -77,5 +77,6 @@
 	"e.g. /backups/pi-agent, created when it is missing": "例如 /backups/pi-agent，不存在时会自动创建",
 	"After a new installation of ioBroker: enter the SFTP settings above, switch the copy on and save. Then choose a backup on the server and restore it. The file is fetched into the storage folder and the conversations are replaced; the current conversations are saved first as a safety copy.": "重新安装 ioBroker 后：在上方填写 SFTP 设置，开启复制并保存。然后在服务器上选择一个备份并恢复。文件会被取回到存储文件夹并替换对话；当前对话会先保存为安全副本。",
 	"The conversations of the agent are replaced by the chosen backup from the server and the instance restarts. The current conversations are saved first as a safety copy. Continue?": "代理的对话将被服务器上所选的备份替换，实例将重启。当前对话会先保存为安全副本。继续吗？",
+	"No API key entered: the system-wide AI settings of admin (System settings, tab \"AI\") are used.": "未输入 API 密钥：将使用 admin 的系统级 AI 设置（系统设置，“AI”选项卡）。",
 	"Allowed users": "允许的用户"
 }

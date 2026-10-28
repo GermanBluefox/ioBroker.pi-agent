@@ -1,5 +1,10 @@
 # Older Changelog
 
+### 0.0.5 (2026-10-26)
+
+- Model field: a list of the models of the chosen provider, a model ID can still be typed in
+- Fix: sendTo (e.g. `ask` from scripts, the model list) never reached the adapter, because `supportedMessages: {custom: false}` switched the message box off; the outdated key is removed from the instance at the first start, which restarts the instance once
+
 ### 0.0.4 (2026-10-26)
 
 - Writes can require a confirmation with buttons in Telegram ("Confirmation required")
