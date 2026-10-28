@@ -65,6 +65,28 @@ function allItems(items) {
     );
 }
 
+test('jsonConfig: every field has xs..xl from 1 to 12, xs 12, never wider on a larger display (repochecker E5507-E5511)', () => {
+	const config = require('../admin/jsonConfig.json');
+	const sizes = ['xs', 'sm', 'md', 'lg', 'xl'];
+	// the repochecker does not ask for sizes of these (sizesOptional)
+	const optional = ['checkDocker', 'custom', 'deviceManager', 'divider', 'header', 'infoBox', 'staticImage'];
+	for (const [key, item] of allItems(config.items)) {
+		if (item.type === 'tabs' || item.type === 'panel' || optional.includes(item.type)) {
+			continue;
+		}
+		for (const size of sizes) {
+			assert.ok(item[size] >= 1 && item[size] <= 12, `${key}: ${size} is ${item[size]}`);
+		}
+		assert.equal(item.xs, 12, `${key}: xs`);
+		for (let i = 1; i < sizes.length; i++) {
+			assert.ok(
+				item[sizes[i]] <= item[sizes[i - 1]],
+				`${key}: ${sizes[i]} (${item[sizes[i]]}) is wider than ${sizes[i - 1]} (${item[sizes[i - 1]]})`,
+			);
+		}
+	}
+});
+
 test('jsonConfig: only component types the admin knows', () => {
 	const config = require('../admin/jsonConfig.json');
 	const known = new Set([

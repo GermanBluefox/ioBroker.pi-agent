@@ -1087,6 +1087,19 @@ const DESC = [
 ];
 /** common.news per version, newest first; the repository builder keeps at most seven. */
 const NEWS = {};
+NEWS['0.5.2'] = [
+    'Settings: the base URL and the notes on the system-wide AI settings are not wider on a large display than on a small one (repository checker E5509)',
+    'Einstellungen: die Basis-URL und die Hinweise zu den systemweiten KI-Einstellungen sind auf großen Bildschirmen nicht breiter als auf kleinen (Repository-Checker E5509)',
+    'Настройки: базовый URL и подсказки к общесистемным настройкам ИИ на больших экранах не шире, чем на маленьких (проверка репозитория E5509)',
+    'Definições: o URL base e as notas sobre as definições de IA de todo o sistema não são mais largos num ecrã grande do que num pequeno (verificador do repositório E5509)',
+    'Instellingen: de basis-URL en de opmerkingen over de systeembrede AI-instellingen zijn op een groot scherm niet breder dan op een klein (repository-checker E5509)',
+    "Paramètres : l'URL de base et les notes sur les paramètres d'IA du système ne sont pas plus larges sur un grand écran que sur un petit (vérificateur du dépôt E5509)",
+    "Impostazioni: l'URL di base e le note sulle impostazioni IA di sistema non sono più larghe su uno schermo grande che su uno piccolo (controllo del repository E5509)",
+    'Ajustes: la URL base y las notas sobre los ajustes de IA del sistema no son más anchas en una pantalla grande que en una pequeña (comprobador del repositorio E5509)',
+    'Ustawienia: bazowy URL i uwagi o ogólnosystemowych ustawieniach AI nie są szersze na dużym ekranie niż na małym (sprawdzanie repozytorium E5509)',
+    'Налаштування: базовий URL і підказки до загальносистемних налаштувань ШІ на великих екранах не ширші, ніж на малих (перевірка репозиторію E5509)',
+    '设置：基础 URL 和系统级 AI 设置的说明在大屏幕上不比小屏幕更宽（仓库检查 E5509）',
+];
 NEWS['0.5.1'] = [
     'Timers of the adapter instead of the ones of Node.js (repository checker E5005)',
     'Timer des Adapters statt der von Node.js (Repository-Checker E5005)',

@@ -1,5 +1,9 @@
 # Older Changelog
 
+### 0.2.0 (2026-10-26)
+
+- Chat in the admin: the menu entry "Pi Agent" opens a chat with the agent, one conversation per ioBroker user, with tool calls, confirmation buttons and reminders
+
 ### 0.1.0 (2026-10-26)
 
 - Messengers: a table with one row per bot (active, instance, allowed users, prefix), for several Telegram instances and the MAX messenger (adapter `max`); the Telegram settings of 0.0.5 are moved into it at the first start

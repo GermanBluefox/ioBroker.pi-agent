@@ -1,8 +1,21 @@
 {
 	"common": {
 		"name": "pi-agent",
-		"version": "0.5.1",
+		"version": "0.5.2",
 		"news": {
+			"0.5.2": {
+				"en": "Settings: the base URL and the notes on the system-wide AI settings are not wider on a large display than on a small one (repository checker E5509)",
+				"de": "Einstellungen: die Basis-URL und die Hinweise zu den systemweiten KI-Einstellungen sind auf großen Bildschirmen nicht breiter als auf kleinen (Repository-Checker E5509)",
+				"ru": "Настройки: базовый URL и подсказки к общесистемным настройкам ИИ на больших экранах не шире, чем на маленьких (проверка репозитория E5509)",
+				"pt": "Definições: o URL base e as notas sobre as definições de IA de todo o sistema não são mais largos num ecrã grande do que num pequeno (verificador do repositório E5509)",
+				"nl": "Instellingen: de basis-URL en de opmerkingen over de systeembrede AI-instellingen zijn op een groot scherm niet breder dan op een klein (repository-checker E5509)",
+				"fr": "Paramètres : l'URL de base et les notes sur les paramètres d'IA du système ne sont pas plus larges sur un grand écran que sur un petit (vérificateur du dépôt E5509)",
+				"it": "Impostazioni: l'URL di base e le note sulle impostazioni IA di sistema non sono più larghe su uno schermo grande che su uno piccolo (controllo del repository E5509)",
+				"es": "Ajustes: la URL base y las notas sobre los ajustes de IA del sistema no son más anchas en una pantalla grande que en una pequeña (comprobador del repositorio E5509)",
+				"pl": "Ustawienia: bazowy URL i uwagi o ogólnosystemowych ustawieniach AI nie są szersze na dużym ekranie niż na małym (sprawdzanie repozytorium E5509)",
+				"uk": "Налаштування: базовий URL і підказки до загальносистемних налаштувань ШІ на великих екранах не ширші, ніж на малих (перевірка репозиторію E5509)",
+				"zh-cn": "设置：基础 URL 和系统级 AI 设置的说明在大屏幕上不比小屏幕更宽（仓库检查 E5509）"
+			},
 			"0.5.1": {
 				"en": "Timers of the adapter instead of the ones of Node.js (repository checker E5005)",
 				"de": "Timer des Adapters statt der von Node.js (Repository-Checker E5005)",
@@ -80,19 +93,6 @@
 				"pl": "Kilka botów Telegrama i komunikator MAX; tabela uprawnień do zapisu z przyciskiem dla zainstalowanych instancji; ustawienia w zakładkach; „próba” nazywa się teraz „tryb symulacji”",
 				"uk": "Кілька ботів Telegram і месенджер MAX; таблиця прав на запис із кнопкою для встановлених інстансів; налаштування на вкладках; «пробний запуск» тепер називається «режим симуляції»",
 				"zh-cn": "多个 Telegram 机器人和 MAX 即时通讯；写入权限表，并带有添加已安装实例的按钮；设置分为多个选项卡；“试运行”现在称为“模拟模式”"
-			},
-			"0.0.5": {
-				"en": "Fix: sendTo from scripts and the admin page reaches the adapter again (the instance restarts once); model list in the settings",
-				"de": "Fehlerbehebung: sendTo aus Skripten und der Admin-Seite erreicht den Adapter wieder (die Instanz startet einmal neu); Modellliste in den Einstellungen",
-				"ru": "Исправление: sendTo из скриптов и страницы админки снова доходит до адаптера (инстанс один раз перезапустится); список моделей в настройках",
-				"pt": "Correção: o sendTo de scripts e da página de administração volta a chegar ao adaptador (a instância reinicia uma vez); lista de modelos nas definições",
-				"nl": "Oplossing: sendTo vanuit scripts en de beheerpagina bereikt de adapter weer (de instantie herstart eenmaal); modellenlijst in de instellingen",
-				"fr": "Correction : le sendTo des scripts et de la page d'administration atteint de nouveau l'adaptateur (l'instance redémarre une fois) ; liste des modèles dans les paramètres",
-				"it": "Correzione: il sendTo da script e dalla pagina di amministrazione raggiunge di nuovo l'adattatore (l'istanza si riavvia una volta); elenco dei modelli nelle impostazioni",
-				"es": "Corrección: el sendTo desde scripts y la página de administración vuelve a llegar al adaptador (la instancia se reinicia una vez); lista de modelos en la configuración",
-				"pl": "Poprawka: sendTo ze skryptów i strony administracyjnej znów dociera do adaptera (instancja uruchomi się ponownie jeden raz); lista modeli w ustawieniach",
-				"uk": "Виправлення: sendTo зі скриптів і сторінки адмінки знову доходить до адаптера (інстанс один раз перезапуститься); список моделей у налаштуваннях",
-				"zh-cn": "修复：来自脚本和管理页面的 sendTo 再次到达适配器（实例会重启一次）；设置中的模型列表"
 			}
 		},
 		"titleLang": {

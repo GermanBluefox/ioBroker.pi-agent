@@ -229,6 +229,10 @@ the last copy.
     ### **WORK IN PROGRESS**
 -->
 
+### 0.5.2 (2026-10-28)
+
+- Settings: the base URL and the notes on the system-wide AI settings are not wider on a large display than on a small one (repository checker E5509)
+
 ### 0.5.1 (2026-10-28)
 
 - Timers of the adapter instead of the ones of Node.js (repository checker E5005)
@@ -256,10 +260,6 @@ the last copy.
 - Button "Test connection" in the settings
 - Time zone: a list of all time zones with their UTC offset
 - Requires admin 8.0.0 or newer
-
-### 0.2.0 (2026-10-26)
-
-- Chat in the admin: the menu entry "Pi Agent" opens a chat with the agent, one conversation per ioBroker user, with tool calls, confirmation buttons and reminders
 
 Older changelog entries can be found in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 
