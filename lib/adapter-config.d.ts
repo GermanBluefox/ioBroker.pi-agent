@@ -4,7 +4,13 @@ declare global {
         interface AdapterConfig {
             provider: string;
             modelId: string;
+            /** Endpoint of an OpenAI-compatible server (provider "custom") since 0.3.0. */
+            baseUrl: string;
+            /** Where the API key comes from since 0.3.0: this instance or the central credential store of admin. */
+            keySource: 'adapter' | 'central';
             apiKey: string;
+            /** Credential of the central credential store (system.credentials.*) when keySource is "central". */
+            credentialId: string;
             /** Table "Write permissions" since 0.1.0. */
             writeRules: Array<{ scope: string; write: boolean; confirm: boolean }>;
             writeAllow: string;

@@ -21,6 +21,10 @@
 						{
 							"label": "DeepSeek",
 							"value": "deepseek"
+						},
+						{
+							"label": "OpenAI-compatible (own URL)",
+							"value": "custom"
 						}
 					],
 					"xs": 12,
@@ -29,16 +33,32 @@
 					"lg": 4,
 					"xl": 4
 				},
-				"modelId": {
-					"type": "autocompleteSendTo",
-					"command": "listModels",
-					"jsonData": "{\"provider\": \"${data.provider}\"}",
-					"alsoDependsOn": [
-						"provider"
+				"baseUrl": {
+					"type": "text",
+					"label": "Base URL",
+					"help": "Endpoint of the OpenAI-compatible server, e.g. http://192.168.1.10:11434/v1 (Ollama) or https://api.groq.com/openai/v1",
+					"hidden": "data.provider !== 'custom'",
+					"xs": 12,
+					"sm": 6,
+					"md": 8,
+					"lg": 8,
+					"xl": 8
+				},
+				"keySource": {
+					"type": "select",
+					"label": "Key source",
+					"options": [
+						{
+							"label": "Store the key in the adapter",
+							"value": "adapter"
+						},
+						{
+							"label": "Central credential store",
+							"value": "central"
+						}
 					],
-					"freeSolo": true,
-					"label": "Model",
-					"help": "Choose a model of the provider or type any model ID. Empty: the default model of the provider",
+					"default": "adapter",
+					"newLine": true,
 					"xs": 12,
 					"sm": 6,
 					"md": 4,
@@ -50,7 +70,54 @@
 					"label": "API key",
 					"repeat": false,
 					"xs": 12,
-					"sm": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4,
+					"help": "Not needed for a local server without a key (Ollama, LM Studio)",
+					"hidden": "data.keySource === 'central'"
+				},
+				"credentialId": {
+					"type": "credential",
+					"credentialType": "ai",
+					"label": "API key credential",
+					"help": "A credential of the central credential store of admin (ioBroker 8)",
+					"hidden": "data.keySource !== 'central'",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"modelId": {
+					"type": "autocompleteSendTo",
+					"command": "listModels",
+					"jsonData": "{\"provider\": ${JSON.stringify(data.provider || '')}, \"modelId\": ${JSON.stringify(data.modelId || '')}, \"baseUrl\": ${JSON.stringify(data.baseUrl || '')}, \"keySource\": ${JSON.stringify(data.keySource || 'adapter')}, \"apiKey\": ${JSON.stringify(data.apiKey || '')}, \"credentialId\": ${JSON.stringify(data.credentialId || '')}}",
+					"alsoDependsOn": [
+						"provider",
+						"baseUrl",
+						"keySource",
+						"apiKey",
+						"credentialId"
+					],
+					"freeSolo": true,
+					"label": "Model",
+					"help": "Choose a model of the provider or type any model ID. Empty: the default model of the provider (required for an OpenAI-compatible server)",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"testConnection": {
+					"type": "sendTo",
+					"command": "testConnection",
+					"label": "Test connection",
+					"jsonData": "{\"provider\": ${JSON.stringify(data.provider || '')}, \"modelId\": ${JSON.stringify(data.modelId || '')}, \"baseUrl\": ${JSON.stringify(data.baseUrl || '')}, \"keySource\": ${JSON.stringify(data.keySource || 'adapter')}, \"apiKey\": ${JSON.stringify(data.apiKey || '')}, \"credentialId\": ${JSON.stringify(data.credentialId || '')}}",
+					"variant": "outlined",
+					"showProcess": true,
+					"xs": 12,
+					"sm": 6,
 					"md": 4,
 					"lg": 4,
 					"xl": 4
@@ -92,9 +159,11 @@
 					"xl": 4
 				},
 				"timeZone": {
-					"type": "text",
+					"type": "autocompleteSendTo",
+					"command": "listTimeZones",
+					"freeSolo": true,
 					"label": "Time zone",
-					"help": "IANA name such as Europe/Berlin. Empty: the time zone of the ioBroker server",
+					"help": "Choose or type an IANA name such as Europe/Berlin. Empty: the time zone of the ioBroker server",
 					"xs": 12,
 					"sm": 6,
 					"md": 4,

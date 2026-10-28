@@ -1,8 +1,21 @@
 {
 	"common": {
 		"name": "pi-agent",
-		"version": "0.2.0",
+		"version": "0.3.0",
 		"news": {
+			"0.3.0": {
+				"en": "OpenAI-compatible servers with an own base URL (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...); the API key can come from the central credential store of admin 8; button \"Test connection\"",
+				"de": "OpenAI-kompatible Server mit eigener Basis-URL (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...); der API-Schlüssel kann aus dem zentralen Zugangsdaten-Speicher von Admin 8 kommen; Schaltfläche „Verbindung testen“",
+				"ru": "OpenAI-совместимые серверы со своим базовым URL (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...); API-ключ можно брать из центрального хранилища учётных данных admin 8; кнопка «Проверить соединение»",
+				"pt": "Servidores compatíveis com OpenAI com URL base próprio (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...); a chave de API pode vir do armazenamento central de credenciais do admin 8; botão \"Testar ligação\"",
+				"nl": "OpenAI-compatibele servers met een eigen basis-URL (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...); de API-sleutel kan uit de centrale opslag voor inloggegevens van admin 8 komen; knop \"Verbinding testen\"",
+				"fr": "Serveurs compatibles OpenAI avec une URL de base personnalisée (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...) ; la clé API peut provenir du stockage central des identifiants d'admin 8 ; bouton « Tester la connexion »",
+				"it": "Server compatibili con OpenAI con URL di base propria (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...); la chiave API può provenire dall'archivio centrale delle credenziali di admin 8; pulsante «Verifica connessione»",
+				"es": "Servidores compatibles con OpenAI con URL base propia (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...); la clave de API puede venir del almacén central de credenciales de admin 8; botón «Probar conexión»",
+				"pl": "Serwery zgodne z OpenAI z własnym bazowym URL (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...); klucz API może pochodzić z centralnego magazynu danych uwierzytelniających admina 8; przycisk „Testuj połączenie”",
+				"uk": "OpenAI-сумісні сервери з власним базовим URL (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...); API-ключ можна брати з центрального сховища облікових даних admin 8; кнопка «Перевірити зʼєднання»",
+				"zh-cn": "支持自定义基础 URL 的 OpenAI 兼容服务器（Ollama、LM Studio、vLLM、Groq、OpenRouter 等）；API 密钥可来自 admin 8 的中央凭据存储；“测试连接”按钮"
+			},
 			"0.2.0": {
 				"en": "Chat in the admin: the menu entry \"Pi Agent\" opens a chat with the agent, one conversation per ioBroker user, with tool calls, confirmation buttons and reminders",
 				"de": "Chat im Admin: Der Menüpunkt „Pi Agent“ öffnet einen Chat mit dem Agenten, eine Unterhaltung pro ioBroker-Benutzer, mit Werkzeugaufrufen, Bestätigungs-Schaltflächen und Erinnerungen",
@@ -80,19 +93,6 @@
 				"pl": "Odpowiedzi w Telegramie zachowują formatowanie (pogrubienie, kursywa, kod, linki); opublikowano z pochodzeniem npm",
 				"uk": "Відповіді в Telegram зберігають форматування (жирний, курсив, код, посилання); опубліковано з npm provenance",
 				"zh-cn": "Telegram 回答保留格式（粗体、斜体、代码、链接）；带 npm 来源证明发布"
-			},
-			"0.0.1": {
-				"en": "Initial version: durable agent with search, read and allowlisted write tools; chat via Telegram",
-				"de": "Erste Version: dauerhafter Agent mit Such-, Lese- und Schreibwerkzeugen mit Freigabeliste; Chat über Telegram",
-				"ru": "Первая версия: устойчивый агент с инструментами поиска, чтения и записи по списку разрешений; чат через Telegram",
-				"pt": "Versão inicial: agente durável com ferramentas de pesquisa, leitura e escrita com lista de permissões; conversa via Telegram",
-				"nl": "Eerste versie: duurzame agent met zoek-, lees- en schrijftools met toegestane lijst; chatten via Telegram",
-				"fr": "Version initiale : agent durable avec outils de recherche, de lecture et d'écriture avec liste autorisée; discussion via Telegram",
-				"it": "Versione iniziale: agente durevole con strumenti di ricerca, lettura e scrittura con elenco consentito; chat tramite Telegram",
-				"es": "Versión inicial: agente duradero con herramientas de búsqueda, lectura y escritura con lista permitida; chat a través de Telegram",
-				"pl": "Wersja początkowa: trwały agent z narzędziami wyszukiwania, odczytu i zapisu z listą dozwolonych; czat przez Telegram",
-				"uk": "Перша версія: стійкий агент з інструментами пошуку, читання та запису зі списком дозволених; чат через Telegram",
-				"zh-cn": "初始版本：具有搜索、读取以及带白名单写入工具的持久代理；可通过 Telegram 聊天"
 			}
 		},
 		"titleLang": {
@@ -173,7 +173,7 @@
 		],
 		"globalDependencies": [
 			{
-				"admin": ">=7.6.20"
+				"admin": ">=8.0.0"
 			}
 		]
 	},
@@ -186,7 +186,10 @@
 	"native": {
 		"provider": "anthropic",
 		"modelId": "",
+		"baseUrl": "",
+		"keySource": "adapter",
 		"apiKey": "",
+		"credentialId": "",
 		"writeRules": [],
 		"writeAllow": "",
 		"instructions": "",

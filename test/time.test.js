@@ -2,7 +2,14 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { isValidTimeZone, resolveTimeZone, parseLocalTime, formatLocal, offsetMinutes } = require('../lib/time');
+const {
+    isValidTimeZone,
+    resolveTimeZone,
+    parseLocalTime,
+    formatLocal,
+    offsetMinutes,
+    timeZoneOptions,
+} = require('../lib/time');
 
 const BERLIN = 'Europe/Berlin';
 const utc = text => Date.parse(text);
@@ -51,4 +58,19 @@ test('local time is written with the zone name', () => {
     const ts = utc('2026-10-25T23:55:27Z');
     assert.equal(formatLocal(ts, BERLIN), '2026-10-26 00:55 (Europe/Berlin)');
     assert.equal(formatLocal(ts, BERLIN, { seconds: true, zone: false }), '2026-10-26 00:55:27');
+});
+
+test('timeZoneOptions: the server zone first, then every zone with its offset at that instant', () => {
+    const winter = timeZoneOptions(utc('2026-01-15T12:00:00Z'));
+    const summer = timeZoneOptions(utc('2026-07-15T12:00:00Z'));
+    assert.equal(winter[0].value, '');
+    assert.match(winter[0].label, /^Server: /);
+    const label = (list, zone) => list.find(o => o.value === zone)?.label;
+    assert.equal(label(winter, BERLIN), 'Europe/Berlin (UTC+01:00)');
+    assert.equal(label(summer, BERLIN), 'Europe/Berlin (UTC+02:00)');
+    assert.equal(label(winter, 'America/New_York'), 'America/New_York (UTC-05:00)');
+    assert.equal(label(winter, 'UTC'), 'UTC (UTC+00:00)');
+    const values = winter.slice(1).map(o => o.value);
+    assert.equal(new Set(values).size, values.length);
+    assert.ok(values.every(isValidTimeZone));
 });

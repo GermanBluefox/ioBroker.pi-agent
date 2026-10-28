@@ -111,6 +111,16 @@ function fakeAdapterCore(hooks) {
             this.db.setState(id, state);
             await hooks.setForeignState?.(id, state);
         }
+        // Credentials of the central store: the test seed holds them "encrypted" as "enc:<value>".
+        decrypt(value) {
+            return String(value).replace(/^enc:/, '');
+        }
+        async subscribeForeignObjectsAsync(pattern) {
+            this.objectSubscriptions = [...(this.objectSubscriptions || []), pattern];
+        }
+        restart() {
+            this.restarted = (this.restarted || 0) + 1;
+        }
         sendTo(...args) {
             this.sent.push(args);
         }
@@ -132,7 +142,8 @@ function fakeAdapterCore(hooks) {
  * @param {object} [options.seed] initial { states, objects } of the fake database
  * @param {Array} options.responses faux responses (messages or factories) for this instance
  * @param {object} [options.hooks] hooks of the fake adapter
- * @returns {Promise<{ agent: object, adapter: object, db: FakeDb, faux: object }>} running instance
+ * @returns {Promise<{ agent: object, adapter: object, db: FakeDb, faux: object, providerCalls: Array }>} running
+ *   instance; providerCalls are the arguments of each createModelsWithKey (provider, key, options)
  */
 async function startAgent({ dataDir, config = {}, seed, responses, hooks = {} }) {
     const fauxModule = await import('@earendil-works/pi-ai/providers/faux');
@@ -144,6 +155,7 @@ async function startAgent({ dataDir, config = {}, seed, responses, hooks = {} })
     const providersPath = require.resolve('../../lib/providers.js');
     const corePath = require.resolve('@iobroker/adapter-core');
     const realProviders = require(providersPath);
+    const providerCalls = [];
     delete require.cache[mainPath];
     require.cache[corePath] = { id: corePath, filename: corePath, loaded: true, exports: fakeAdapterCore(hooks) };
     require.cache[providersPath] = {
@@ -152,7 +164,8 @@ async function startAgent({ dataDir, config = {}, seed, responses, hooks = {} })
         loaded: true,
         exports: {
             ...realProviders,
-            createModelsWithKey: async () => {
+            createModelsWithKey: async (...args) => {
+                providerCalls.push(args);
                 const models = createModels();
                 models.setProvider(faux.provider);
                 return { spec: { defaultModel: faux.getModel().id }, models };
@@ -169,7 +182,7 @@ async function startAgent({ dataDir, config = {}, seed, responses, hooks = {} })
         });
         agent.emit('ready');
         await agent.readyPromise;
-        return { agent, adapter: agent, db, faux };
+        return { agent, adapter: agent, db, faux, providerCalls };
     } finally {
         delete require.cache[providersPath];
         delete require.cache[corePath];

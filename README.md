@@ -30,8 +30,9 @@ before it runs, so an interrupted request continues after the adapter starts aga
 
 ## Requirements
 
-- Node.js 22.19.0 or newer, js-controller 6.0.11 or newer, admin 7.6.20 or newer.
-- An API key of the chosen provider: Anthropic, OpenAI or DeepSeek.
+- Node.js 22.19.0 or newer, js-controller 6.0.11 or newer, admin 8.0.0 or newer.
+- An API key of the chosen provider: Anthropic, OpenAI or DeepSeek, or an OpenAI-compatible server (a local one such
+  as Ollama needs no key).
 - The adapter runs as its own process (not in compact mode). It keeps long-running model requests and a conversation
   store open, and its dependencies are large; running it apart keeps a fault or a memory peak away from other adapters.
   The API key is kept in memory of this instance only and is never put into the process environment.
@@ -43,11 +44,13 @@ The settings have three tabs: **General**, **Write permissions** and **Messenger
 | Setting         | Meaning                                                                          |
 | --------------- | -------------------------------------------------------------------------------- |
 | Provider, Model | The language model. The model field lists the models of the chosen provider (the instance must be running for the list); any other model ID can be typed in. Empty: the default of the provider (`claude-sonnet-5-5`, `gpt-6-sol`, `deepseek-flash`). |
-| API key         | Stored encrypted.                                                                |
+| Base URL        | Only for **OpenAI-compatible (own URL)**: the endpoint of the server, see below. |
+| Key source      | **Store the key in the adapter** (the field "API key", stored encrypted) or **Central credential store**: a credential of the central credential store of admin 8, chosen in "API key credential". A changed credential restarts the instance with the new key. |
+| Test connection | Asks the model one short question with the values of the form, saved or not, and shows the answer or the error. The instance must be running. |
 | Simulation mode (nothing is switched) | On by default. The agent says what it would switch, but no state is written. |
 | Write permissions | Table, one row per scope: an instance or object ID (`hm-rpc.0` covers everything below it) or a pattern with `*` (`hm-rpc.0.*.STATE`), with the checkboxes "Write allowed" and "Confirmation required". **Add installed instances** adds a row for every installed instance that has none, with nothing allowed yet. States that match no row can only be read. |
 | Write allowlist, Confirmation required | Under "Advanced": regular expressions, one per line, in addition to the table (the settings of 0.0.5 and earlier keep working). |
-| Time zone       | IANA name such as `Europe/Berlin` for reminders, `get_time` and history times. Empty: the time zone of the ioBroker server. |
+| Time zone       | IANA name such as `Europe/Berlin` for reminders, `get_time` and history times, chosen from a list with the current UTC offsets (the instance must be running for the list) or typed in. Empty: the time zone of the ioBroker server. |
 | History instance | `history`, `sql` or `influxdb` instance for `get_history`. Empty: the default history of the system settings. |
 | Instructions    | Text appended to the system prompt, for example room names and house rules.     |
 | Messengers      | Table, one row per `telegram` or `max` instance (bot): active, instance, allowed users, prefix. No row: no messenger is used. |
@@ -141,6 +144,23 @@ Messenger adapters that can only send (e.g. WhatsApp, Signal, Pushover) cannot b
 Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Available models: `deepseek-flash`
 (default, fast) and `deepseek-v4-pro`. Requests go to `https://api.deepseek.com`.
 
+### OpenAI-compatible servers
+
+Select **OpenAI-compatible (own URL)** for any server with the OpenAI chat completions API, local or in the cloud:
+
+| Server     | Base URL                              | API key  |
+| ---------- | ------------------------------------- | -------- |
+| Ollama     | `http://<host>:11434/v1`              | none     |
+| LM Studio  | `http://<host>:1234/v1`               | none     |
+| vLLM       | `http://<host>:8000/v1`               | optional |
+| Groq       | `https://api.groq.com/openai/v1`      | required |
+| OpenRouter | `https://openrouter.ai/api/v1`        | required |
+
+- The model field lists what the server reports at `<base URL>/models`; the model ID is required.
+- The model must support tool calling, otherwise the agent can neither read nor write states.
+- The adapter does not know the limits of such a model; it assumes a context of 128k tokens and at most 8192 tokens
+  per answer, and it reports no cost.
+
 ## Security
 
 - The model decides which tools to call. The write permissions and the simulation mode are your protection, not the prompt.
@@ -157,6 +177,14 @@ Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Avai
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### 0.3.0 (2026-10-28)
+
+- OpenAI-compatible servers with an own base URL (Ollama, LM Studio, vLLM, Groq, OpenRouter, ...)
+- The API key can come from the central credential store of admin 8; a changed credential restarts the instance
+- Button "Test connection" in the settings
+- Time zone: a list of all time zones with their UTC offset
+- Requires admin 8.0.0 or newer
 
 ### 0.2.0 (2026-10-26)
 
@@ -183,12 +211,6 @@ Select **DeepSeek** as provider and enter a key from the DeepSeek platform. Avai
 - New tool `get_history`: past values from the history, sql or influxdb instance
 - Token use and cost in `usage.*`
 - Time zone setting: `remind_me` reads local times ("18:00", "27.10. 18:00"), answers and history are in local time, new tool `get_time`
-
-### 0.0.3 (2026-10-26)
-
-- Conversations are stored in SQLite instead of JSONL, which kept the whole history in memory
-- Every conversation has its own queue: Telegram chats no longer wait for each other
-- An answer that would give broken HTML is sent to Telegram as plain text; a quote in a link URL is escaped
 
 Older changelog entries can be found in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 

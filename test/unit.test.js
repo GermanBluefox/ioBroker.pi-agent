@@ -81,6 +81,7 @@ test('jsonConfig: only component types the admin knows', () => {
 		'tabs',
 		'panel',
 		'sendTo',
+		'credential', // admin 8: a credential of the central credential store
 	]);
 	for (const [key, item] of allItems(config.items)) {
 		assert.ok(known.has(item.type), `${key} uses unknown type "${item.type}"`);

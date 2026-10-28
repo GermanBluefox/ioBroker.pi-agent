@@ -4,10 +4,11 @@ const utils = require('@iobroker/adapter-core');
 const crypto = require('node:crypto');
 const { parseAllowlist, parseWriteRules, requestIdFor } = require('./lib/guard');
 const { createIoBrokerExtension } = require('./lib/tools');
-const { createModelsWithKey, listModels } = require('./lib/providers');
+const { createModelsWithKey, listModels, testModel } = require('./lib/providers');
+const { keySourceOf, resolveApiKey } = require('./lib/credentials');
 const { ensureObjects } = require('./lib/objects');
 const { openStore } = require('./lib/store');
-const { resolveTimeZone } = require('./lib/time');
+const { resolveTimeZone, timeZoneOptions } = require('./lib/time');
 const { channelsFromConfig, legacyRows, chatKey, parseChatKey, migrateChats } = require('./lib/channels');
 const { createDrivers, messengerType, MESSENGER_ADAPTERS } = require('./lib/messengers');
 const { ADMIN, ADMIN_INSTRUCTIONS, historyOf, withNotices, createAdminChat } = require('./lib/admin-chat');
@@ -112,7 +113,11 @@ class PiAgent extends utils.Adapter {
     async onReady() {
         try {
             await this.setStateAsync('info.connection', { val: false, ack: true });
-            if ((await this.enableMessagebox()) || (await this.migrateMessengerSettings())) {
+            if (
+                (await this.enableMessagebox()) ||
+                (await this.migrateMessengerSettings()) ||
+                (await this.removeObsoleteSettings())
+            ) {
                 this.markReady();
                 return; // js-controller restarts the instance because its object changed
             }
@@ -141,16 +146,13 @@ class PiAgent extends utils.Adapter {
                 this.log.info('Simulation mode is on: write requests are logged but not executed.');
             }
 
-            if (!this.config.apiKey) {
-                // A setting the user still has to make, not a fault: stay idle and say what is missing.
-                this.log.warn(
-                    'No API key configured. Enter it in the instance settings; the agent stays idle until then.',
-                );
+            const apiKey = await this.apiKey();
+            if (apiKey === null) {
                 this.markReady();
                 return;
             }
 
-            await this.startHarness();
+            await this.startHarness(apiKey);
             await this.subscribeStatesAsync('chat.input');
             await this.startMessengers();
             await this.setStateAsync('info.connection', { val: true, ack: true });
@@ -222,6 +224,31 @@ class PiAgent extends utils.Adapter {
     }
 
     /**
+     * A development build before 0.1.0 stored the messenger table as "telegramChannels"; no release reads it.
+     *
+     * @returns {Promise<boolean>} true when the instance object was changed (js-controller then restarts the instance)
+     */
+    async removeObsoleteSettings() {
+        if (!('telegramChannels' in Object(this.config))) {
+            return false;
+        }
+        const id = `system.adapter.${this.namespace}`;
+        try {
+            const obj = await this.getForeignObjectAsync(id);
+            if (!obj?.native || !('telegramChannels' in obj.native)) {
+                return false;
+            }
+            delete obj.native.telegramChannels;
+            await this.setForeignObjectAsync(id, obj);
+            this.log.info('Removed the unused setting "telegramChannels"; the instance restarts once');
+            return true;
+        } catch (e) {
+            this.log.warn(`Could not remove the unused setting "telegramChannels": ${e.message}`);
+            return false;
+        }
+    }
+
+    /**
      * Installed messenger instances (telegram, max) for the instance column of the messenger table.
      *
      * @returns {Promise<Array<{ value: string, label: string }>>} options
@@ -265,10 +292,72 @@ class PiAgent extends utils.Adapter {
         return { rows: [...table, ...added], added: added.length };
     }
 
-    /** Load the ESM packages and open the durable harness on the instance data directory. */
-    async startHarness() {
+    /**
+     * The API key of the configuration, from this instance or from the central credential store of admin.
+     * A key of the central store is watched: when it changes, the instance restarts with the new one.
+     *
+     * @returns {Promise<string | null>} the key (empty for a custom server without one), null when the agent stays idle
+     */
+    async apiKey() {
+        const central = keySourceOf(this.config) === 'central';
+        const credentialId = String(this.config.credentialId || '').trim();
+        let key = '';
+        try {
+            key = await resolveApiKey(this, this.config);
+        } catch (e) {
+            this.log.warn(`Cannot read the credential "${credentialId}": ${e.message}; the agent stays idle`);
+            return null;
+        }
+        if (central && credentialId) {
+            await this.watchCredential(credentialId);
+        }
+        if (!key && this.config.provider !== 'custom') {
+            // A setting the user still has to make, not a fault: stay idle and say what is missing.
+            this.log.warn(
+                central
+                    ? 'No credential with an API key chosen. Choose it in the instance settings; the agent stays idle until then.'
+                    : 'No API key configured. Enter it in the instance settings; the agent stays idle until then.',
+            );
+            return null;
+        }
+        return key;
+    }
+
+    /**
+     * Restart the instance when the chosen credential of the central store is changed or deleted.
+     *
+     * @param {string} credentialId id of the credential, e.g. "system.credentials.openai"
+     */
+    async watchCredential(credentialId) {
+        try {
+            const { subscribeCredentials } = require('@iobroker/adapter-core/credentials');
+            await subscribeCredentials(this, credentialId, () => {
+                if (this.stopping) {
+                    return;
+                }
+                this.log.info(`The credential ${credentialId} was changed; the instance restarts`);
+                this.restart();
+            });
+        } catch (e) {
+            this.log.warn(`Cannot watch the credential ${credentialId}: ${e.message}`);
+        }
+    }
+
+    /**
+     * Load the ESM packages and open the durable harness on the instance data directory.
+     *
+     * @param {string} apiKey API key of the provider (may be empty for a custom server)
+     */
+    async startHarness(apiKey) {
+        const custom = this.config.provider === 'custom';
+        if (custom && !String(this.config.modelId || '').trim()) {
+            throw new Error('No model configured for the OpenAI-compatible server');
+        }
         // The key goes into an in-memory credential store of this instance, never into the process environment.
-        const { spec, models } = await createModelsWithKey(this.config.provider, this.config.apiKey);
+        const { spec, models } = await createModelsWithKey(this.config.provider, apiKey, {
+            baseUrl: this.config.baseUrl,
+            modelId: this.config.modelId,
+        });
         const modelId = String(this.config.modelId || '').trim() || spec.defaultModel;
 
         const [{ BACKGROUND_CONTEXT }, durable, ai] = await Promise.all([
@@ -796,18 +885,77 @@ class PiAgent extends utils.Adapter {
         };
     }
 
+    /**
+     * Provider settings sent by the admin page (unsaved form values); missing fields come from the saved configuration.
+     *
+     * @param {unknown} message jsonData of the admin page
+     * @returns {{ provider: string, modelId: string, baseUrl: string, keySource: string, apiKey: string, credentialId: string }} settings
+     */
+    providerForm(message) {
+        const form = Object(message);
+        const pick = name => String(form[name] ?? this.config[name] ?? '').trim();
+        return {
+            provider: pick('provider'),
+            modelId: pick('modelId'),
+            baseUrl: pick('baseUrl'),
+            keySource: pick('keySource'),
+            apiKey: pick('apiKey'),
+            credentialId: pick('credentialId'),
+        };
+    }
+
+    /**
+     * Ask the configured model one short question.
+     *
+     * @param {ReturnType<PiAgent['providerForm']>} form provider settings
+     * @returns {Promise<string>} text for the admin page
+     */
+    async testConnection(form) {
+        const key = await resolveApiKey(this, form);
+        if (!key && form.provider !== 'custom') {
+            throw new Error(form.keySource === 'central' ? 'No credential chosen' : 'No API key entered');
+        }
+        if (form.provider === 'custom' && !form.modelId) {
+            throw new Error('No model entered');
+        }
+        const { spec, models } = await createModelsWithKey(form.provider, key, {
+            baseUrl: form.baseUrl,
+            modelId: form.modelId,
+        });
+        const modelId = form.modelId || spec.defaultModel;
+        const reply = await testModel(models, form.provider, modelId);
+        return `${form.provider}/${modelId}: ${reply.slice(0, 200)}`;
+    }
+
     /** @param {ioBroker.Message} obj message from a script or another adapter */
     async onMessage(obj) {
         if (obj?.command === 'listModels') {
-            // model field of the admin page; needs no API key and no running agent
+            // model field of the admin page; needs no running agent, and an API key only for a custom server
             let options = [];
             try {
-                options = await listModels(String(Object(obj.message).provider || this.config.provider || ''));
+                const form = this.providerForm(obj.message);
+                options = await listModels(form.provider, {
+                    baseUrl: form.baseUrl,
+                    apiKey: form.provider === 'custom' ? await resolveApiKey(this, form) : '',
+                });
             } catch (e) {
                 this.log.debug(`No model list: ${e.message}`);
             }
             if (obj.callback) {
                 this.sendTo(obj.from, obj.command, options, obj.callback);
+            }
+            return;
+        }
+        if (obj?.command === 'testConnection') {
+            // button of the admin page: one short question with the unsaved values of the form
+            let answer;
+            try {
+                answer = { result: await this.testConnection(this.providerForm(obj.message)) };
+            } catch (e) {
+                answer = { error: e.message };
+            }
+            if (obj.callback) {
+                this.sendTo(obj.from, obj.command, answer, obj.callback);
             }
             return;
         }
@@ -835,6 +983,12 @@ class PiAgent extends utils.Adapter {
             }
             if (obj.callback) {
                 this.sendTo(obj.from, obj.command, answer, obj.callback);
+            }
+            return;
+        }
+        if (obj?.command === 'listTimeZones') {
+            if (obj.callback) {
+                this.sendTo(obj.from, obj.command, timeZoneOptions(), obj.callback);
             }
             return;
         }

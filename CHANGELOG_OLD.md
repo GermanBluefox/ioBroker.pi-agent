@@ -1,5 +1,11 @@
 # Older Changelog
 
+### 0.0.3 (2026-10-26)
+
+- Conversations are stored in SQLite instead of JSONL, which kept the whole history in memory
+- Every conversation has its own queue: Telegram chats no longer wait for each other
+- An answer that would give broken HTML is sent to Telegram as plain text; a quote in a link URL is escaped
+
 ### 0.0.2 (2026-10-25)
 
 - Telegram answers keep their formatting: Markdown of the model is sent as Telegram HTML (bold, italic, code, links;
