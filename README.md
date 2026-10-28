@@ -229,6 +229,10 @@ the last copy.
     ### **WORK IN PROGRESS**
 -->
 
+### 0.5.1 (2026-10-28)
+
+- Timers of the adapter instead of the ones of Node.js (repository checker E5005)
+
 ### 0.5.0 (2026-10-28)
 
 - The system-wide AI settings of admin (System settings, tab "AI") can be used: new key source; an instance without a key of its own takes them too
@@ -256,15 +260,6 @@ the last copy.
 ### 0.2.0 (2026-10-26)
 
 - Chat in the admin: the menu entry "Pi Agent" opens a chat with the agent, one conversation per ioBroker user, with tool calls, confirmation buttons and reminders
-
-### 0.1.0 (2026-10-26)
-
-- Messengers: a table with one row per bot (active, instance, allowed users, prefix), for several Telegram instances and the MAX messenger (adapter `max`); the Telegram settings of 0.0.5 are moved into it at the first start
-- Confirmations and reminders go back through the bot the request came from
-- Allowed users can be separated by commas
-- Write permissions: a table of scopes (instance, object ID or pattern with `*`) with the checkboxes "Write allowed" and "Confirmation required", and a button that adds the installed instances; the regular expressions stay under "Advanced"
-- The settings have three tabs: General, Write permissions, Messengers
-- "Dry run" is now called "Simulation mode (nothing is switched)"
 
 Older changelog entries can be found in [CHANGELOG_OLD.md](CHANGELOG_OLD.md).
 

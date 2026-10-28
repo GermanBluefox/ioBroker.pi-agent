@@ -1,8 +1,21 @@
 {
 	"common": {
 		"name": "pi-agent",
-		"version": "0.5.0",
+		"version": "0.5.1",
 		"news": {
+			"0.5.1": {
+				"en": "Timers of the adapter instead of the ones of Node.js (repository checker E5005)",
+				"de": "Timer des Adapters statt der von Node.js (Repository-Checker E5005)",
+				"ru": "Таймеры адаптера вместо таймеров Node.js (проверка репозитория E5005)",
+				"pt": "Temporizadores do adaptador em vez dos do Node.js (verificador do repositório E5005)",
+				"nl": "Timers van de adapter in plaats van die van Node.js (repository-checker E5005)",
+				"fr": "Minuteries de l'adaptateur au lieu de celles de Node.js (vérificateur du dépôt E5005)",
+				"it": "Timer dell'adattatore invece di quelli di Node.js (controllo del repository E5005)",
+				"es": "Temporizadores del adaptador en lugar de los de Node.js (comprobador del repositorio E5005)",
+				"pl": "Timery adaptera zamiast timerów Node.js (sprawdzanie repozytorium E5005)",
+				"uk": "Таймери адаптера замість таймерів Node.js (перевірка репозиторію E5005)",
+				"zh-cn": "使用适配器的计时器代替 Node.js 的计时器（仓库检查 E5005）"
+			},
 			"0.5.0": {
 				"en": "System-wide AI settings of admin as key source, Google Gemini and OpenRouter, own conversations for sendTo callers such as ioBroker.assistant (by GermanBluefox); admin chat: switch \"Details\" with tools, results, times and tokens, and administrators can read the conversations of the messengers and of ioBroker.assistant; \"New conversation\" deletes the old one from the store at the next start",
 				"de": "Systemweite KI-Einstellungen von Admin als Schlüssel-Quelle, Google Gemini und OpenRouter, eigene Unterhaltungen für sendTo-Aufrufer wie ioBroker.assistant (von GermanBluefox); Admin-Chat: Schalter „Details“ mit Werkzeugen, Ergebnissen, Zeiten und Tokens, und Administratoren können die Unterhaltungen der Messenger und von ioBroker.assistant lesen; „Neue Unterhaltung“ löscht die bisherige beim nächsten Start aus dem Speicher",
@@ -80,19 +93,6 @@
 				"pl": "Poprawka: sendTo ze skryptów i strony administracyjnej znów dociera do adaptera (instancja uruchomi się ponownie jeden raz); lista modeli w ustawieniach",
 				"uk": "Виправлення: sendTo зі скриптів і сторінки адмінки знову доходить до адаптера (інстанс один раз перезапуститься); список моделей у налаштуваннях",
 				"zh-cn": "修复：来自脚本和管理页面的 sendTo 再次到达适配器（实例会重启一次）；设置中的模型列表"
-			},
-			"0.0.4": {
-				"en": "Confirm writes with buttons in Telegram; reminders; history values; token use and cost; local time zone",
-				"de": "Schreibvorgänge per Schaltfläche in Telegram bestätigen; Erinnerungen; Verlaufswerte; Token-Verbrauch und Kosten; lokale Zeitzone",
-				"ru": "Подтверждение записи кнопками в Telegram; напоминания; значения из истории; расход токенов и стоимость; местный часовой пояс",
-				"pt": "Confirmar escritas com botões no Telegram; lembretes; valores do histórico; consumo de tokens e custo; fuso horário local",
-				"nl": "Schrijfacties bevestigen met knoppen in Telegram; herinneringen; geschiedeniswaarden; tokenverbruik en kosten; lokale tijdzone",
-				"fr": "Confirmer les écritures avec des boutons dans Telegram ; rappels ; valeurs d'historique ; consommation de jetons et coût ; fuseau horaire local",
-				"it": "Conferma delle scritture con pulsanti in Telegram; promemoria; valori della cronologia; consumo di token e costo; fuso orario locale",
-				"es": "Confirmar escrituras con botones en Telegram; recordatorios; valores del historial; consumo de tokens y coste; zona horaria local",
-				"pl": "Potwierdzanie zapisów przyciskami w Telegramie; przypomnienia; wartości z historii; zużycie tokenów i koszt; lokalna strefa czasowa",
-				"uk": "Підтвердження запису кнопками в Telegram; нагадування; значення з історії; витрата токенів і вартість; місцевий часовий пояс",
-				"zh-cn": "通过 Telegram 按钮确认写入；提醒；历史值；令牌用量和费用；本地时区"
 			}
 		},
 		"titleLang": {

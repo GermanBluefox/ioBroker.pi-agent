@@ -152,6 +152,15 @@ function fakeAdapterCore(hooks) {
         async delFileAsync(metaId, file) {
             delete this.files[`${metaId}/${file}`];
         }
+        // Timers of the adapter; js-controller clears them when the instance stops, here they do not keep the test alive.
+        setTimeout(callback, ms) {
+            const handle = globalThis.setTimeout(callback, ms);
+            handle.unref?.();
+            return handle;
+        }
+        clearTimeout(handle) {
+            globalThis.clearTimeout(handle);
+        }
         restart() {
             this.restarted = (this.restarted || 0) + 1;
         }

@@ -173,7 +173,7 @@ class PiAgent extends utils.Adapter {
         /** Sending, reading and confirming per messenger adapter (telegram, max). */
         this.drivers = createDrivers(this);
         /** Questions, errors and reminders of the chat in the admin tab, per ioBroker user. */
-        this.adminChat = createAdminChat();
+        this.adminChat = createAdminChat(this);
         /** Users of the admin tab whose request runs now (requests resumed after a restart are in this.pending). */
         this.adminRunning = new Set();
         /** "<instance>/<chat id>" -> conversation id, persisted in telegram.chats. */
@@ -901,7 +901,7 @@ class PiAgent extends utils.Adapter {
         }
         const message = `Backup ${name} (${conversations} conversation(s), ${chats} chat(s)) is restored at the restart of the instance${safety ? '; the current conversations were saved before' : ''}`;
         this.log.info(message);
-        setTimeout(() => this.restart(), 1000);
+        this.setTimeout(() => this.restart(), 1000);
         return message;
     }
 
@@ -947,12 +947,12 @@ class PiAgent extends utils.Adapter {
     /**
      * Timers for the SFTP copy, so a pending timeout ends with the instance.
      *
-     * @returns {{ start: (callback: () => void, ms: number) => ReturnType<typeof setTimeout>, stop: (handle: ReturnType<typeof setTimeout>) => void }} timers
+     * @returns {{ start: (callback: () => void, ms: number) => ioBroker.Timeout | undefined, stop: (handle: ioBroker.Timeout | undefined) => void }} timers
      */
     remoteTimers() {
         return {
-            start: (callback, ms) => setTimeout(callback, ms),
-            stop: handle => handle && clearTimeout(handle),
+            start: (callback, ms) => this.setTimeout(callback, ms),
+            stop: handle => handle && this.clearTimeout(handle),
         };
     }
 
@@ -1010,7 +1010,7 @@ class PiAgent extends utils.Adapter {
      * restart does not reset the clock). Off when the interval is 0.
      */
     async scheduleAutoBackup() {
-        clearTimeout(this.backupTimer);
+        this.clearTimeout(this.backupTimer);
         this.backupTimer = undefined;
         const last = await this.getStateAsync('backup.last');
         const delay = autoBackupDelay(this.config.autoBackupInterval, last ? Number(last.val) : 0);
@@ -1018,7 +1018,7 @@ class PiAgent extends utils.Adapter {
             return;
         }
         this.log.debug(`Next automatic backup in ${Math.round(delay / 60_000)} min`);
-        this.backupTimer = setTimeout(() => void this.runAutoBackup(), delay);
+        this.backupTimer = this.setTimeout(() => void this.runAutoBackup(), delay);
     }
 
     /** Run one automatic backup; a failure is retried after one hour. */
@@ -1029,7 +1029,7 @@ class PiAgent extends utils.Adapter {
         } catch (e) {
             this.log.warn(`Automatic backup failed: ${e.message} — next attempt in one hour`);
             if (!this.stopping) {
-                this.backupTimer = setTimeout(() => void this.runAutoBackup(), 3_600_000);
+                this.backupTimer = this.setTimeout(() => void this.runAutoBackup(), 3_600_000);
             }
             return;
         }
@@ -1641,7 +1641,7 @@ class PiAgent extends utils.Adapter {
     /** @param {() => void} callback called when everything is stopped */
     onUnload(callback) {
         this.stopping = true;
-        clearTimeout(this.backupTimer);
+        this.clearTimeout(this.backupTimer);
         const done = async () => {
             try {
                 await this.harness?.close(this.context);

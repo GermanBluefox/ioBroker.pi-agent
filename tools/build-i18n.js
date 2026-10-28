@@ -1087,6 +1087,19 @@ const DESC = [
 ];
 /** common.news per version, newest first; the repository builder keeps at most seven. */
 const NEWS = {};
+NEWS['0.5.1'] = [
+    'Timers of the adapter instead of the ones of Node.js (repository checker E5005)',
+    'Timer des Adapters statt der von Node.js (Repository-Checker E5005)',
+    'Таймеры адаптера вместо таймеров Node.js (проверка репозитория E5005)',
+    'Temporizadores do adaptador em vez dos do Node.js (verificador do repositório E5005)',
+    'Timers van de adapter in plaats van die van Node.js (repository-checker E5005)',
+    "Minuteries de l'adaptateur au lieu de celles de Node.js (vérificateur du dépôt E5005)",
+    "Timer dell'adattatore invece di quelli di Node.js (controllo del repository E5005)",
+    'Temporizadores del adaptador en lugar de los de Node.js (comprobador del repositorio E5005)',
+    'Timery adaptera zamiast timerów Node.js (sprawdzanie repozytorium E5005)',
+    'Таймери адаптера замість таймерів Node.js (перевірка репозиторію E5005)',
+    '使用适配器的计时器代替 Node.js 的计时器（仓库检查 E5005）',
+];
 NEWS['0.5.0'] = [
     'System-wide AI settings of admin as key source, Google Gemini and OpenRouter, own conversations for sendTo callers such as ioBroker.assistant (by GermanBluefox); admin chat: switch "Details" with tools, results, times and tokens, and administrators can read the conversations of the messengers and of ioBroker.assistant; "New conversation" deletes the old one from the store at the next start',
     'Systemweite KI-Einstellungen von Admin als Schlüssel-Quelle, Google Gemini und OpenRouter, eigene Unterhaltungen für sendTo-Aufrufer wie ioBroker.assistant (von GermanBluefox); Admin-Chat: Schalter „Details“ mit Werkzeugen, Ergebnissen, Zeiten und Tokens, und Administratoren können die Unterhaltungen der Messenger und von ioBroker.assistant lesen; „Neue Unterhaltung“ löscht die bisherige beim nächsten Start aus dem Speicher',
