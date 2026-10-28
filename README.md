@@ -31,8 +31,9 @@ before it runs, so an interrupted request continues after the adapter starts aga
 ## Requirements
 
 - Node.js 22.19.0 or newer, js-controller 6.0.11 or newer, admin 8.0.0 or newer.
-- An API key of the chosen provider: Anthropic, OpenAI or DeepSeek, or an OpenAI-compatible server (a local one such
-  as Ollama needs no key).
+- An API key of the chosen provider: Anthropic, OpenAI, DeepSeek or Google Gemini, or an OpenAI-compatible server (a
+  local one such as Ollama needs no key). Or the system-wide AI settings of admin (System settings, tab "AI"), which
+  name provider, model and key once for the whole system.
 - The adapter runs as its own process (not in compact mode). It keeps long-running model requests and a conversation
   store open, and its dependencies are large; running it apart keeps a fault or a memory peak away from other adapters.
   The API key is kept in memory of this instance only and is never put into the process environment.
@@ -43,9 +44,10 @@ The settings have three tabs: **General**, **Write permissions** and **Messenger
 
 | Setting         | Meaning                                                                          |
 | --------------- | -------------------------------------------------------------------------------- |
-| Provider, Model | The language model. The model field lists the models of the chosen provider (the instance must be running for the list); any other model ID can be typed in. Empty: the default of the provider (`claude-sonnet-5-5`, `gpt-6-sol`, `deepseek-flash`). |
+| Key source      | **System-wide AI settings of admin** (default for new instances): provider, model, base URL and key come from the system settings of admin, tab "AI" (object `system.ai`); a change there restarts the instance. **Store the key in the adapter** or **Central credential store**: the settings below. An instance with neither a key nor an OpenAI-compatible server of its own also takes the system-wide settings. |
+| Provider, Model | The language model. The model field lists the models of the chosen provider (the instance must be running for the list); any other model ID can be typed in. Empty: the default of the provider (`claude-sonnet-5-5`, `gpt-6-sol`, `deepseek-flash`, `gemini-3.5-flash`). |
 | Base URL        | Only for **OpenAI-compatible (own URL)**: the endpoint of the server, see below. |
-| Key source      | **Store the key in the adapter** (the field "API key", stored encrypted) or **Central credential store**: a credential of the central credential store of admin 8, chosen in "API key credential". A changed credential restarts the instance with the new key. |
+| API key         | **Store the key in the adapter** (the field "API key", stored encrypted) or **Central credential store**: a credential of the central credential store of admin 8, chosen in "API key credential". A changed credential restarts the instance with the new key. |
 | Test connection | Asks the model one short question with the values of the form, saved or not, and shows the answer or the error. The instance must be running. |
 | Simulation mode (nothing is switched) | On by default. The agent says what it would switch, but no state is written. |
 | Write permissions | Table, one row per scope: an instance or object ID (`hm-rpc.0` covers everything below it) or a pattern with `*` (`hm-rpc.0.*.STATE`), with the checkboxes "Write allowed" and "Confirmation required". **Add installed instances** adds a row for every installed instance that has none, with nothing allowed yet. States that match no row can only be read. |
@@ -97,6 +99,23 @@ sendTo('pi-agent.0', 'ask', { text: 'Is the living room light on?' }, result => 
 
 The answer of a `sendTo` request comes back only through the callback (`result.answer`, or `result.error`); it is not
 written to `chat.answer`.
+
+Without further fields, all `sendTo` requests share one conversation. A caller that serves several people or rooms
+(for example a voice assistant) can give each of them a conversation of its own, with its own history and its own
+instructions:
+
+```js
+sendTo('pi-agent.0', 'ask', {
+    text: 'Is the light on?',
+    conversation: 'kitchen', // own conversation of this caller; up to 100 characters
+    instructions: 'Answer in one or two short sentences without Markdown; the answer is spoken.', // optional
+    requestId: 'kitchen-1730123456789', // optional: a repeated request with the same id is answered once
+}, result => log(result.answer));
+```
+
+The conversations are kept per sending instance (`pi-agent.0.telegram.chats` lists them as
+`sendTo:<instance>/<conversation>`). Changed instructions apply from the next request of the conversation on. Writes on
+the "Confirmation required" list cannot be confirmed in such a conversation and are blocked.
 
 `pi-agent.0.chat.pending` lists the requests that were accepted but not answered yet. If the adapter stops in the
 middle, they continue on the next start. The answer of a request from `chat.input` or `sendTo` is then written to
@@ -177,6 +196,11 @@ Select **OpenAI-compatible (own URL)** for any server with the OpenAI chat compl
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
+- The system-wide AI settings of admin (System settings, tab "AI") can be used: new key source, default for new instances; an instance without a key of its own takes them too
+- Google Gemini as provider
+- sendTo `ask` accepts `conversation` and `instructions`: a conversation of its own per caller conversation, e.g. one per room of a voice assistant
 
 ### 0.3.0 (2026-10-28)
 

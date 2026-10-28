@@ -31,6 +31,8 @@
 	"Base URL": "Basis-URL",
 	"Endpoint of the OpenAI-compatible server, e.g. http://192.168.1.10:11434/v1 (Ollama) or https://api.groq.com/openai/v1": "Endpunkt des OpenAI-kompatiblen Servers, z. B. http://192.168.1.10:11434/v1 (Ollama) oder https://api.groq.com/openai/v1",
 	"Key source": "Schlüssel-Quelle",
+	"System-wide AI settings of admin": "Systemweite KI-Einstellungen von Admin",
+	"Provider, model and API key come from the system settings of admin, tab \"AI\". A change there restarts the instance.": "Anbieter, Modell und API-Schlüssel kommen aus den Systemeinstellungen von Admin, Reiter „KI“. Eine Änderung dort startet die Instanz neu.",
 	"Store the key in the adapter": "Schlüssel im Adapter speichern",
 	"Central credential store": "Zentraler Zugangsdaten-Speicher",
 	"Not needed for a local server without a key (Ollama, LM Studio)": "Bei einem lokalen Server ohne Schlüssel nicht nötig (Ollama, LM Studio)",

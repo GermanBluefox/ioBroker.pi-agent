@@ -31,6 +31,8 @@
 	"Base URL": "基础 URL",
 	"Endpoint of the OpenAI-compatible server, e.g. http://192.168.1.10:11434/v1 (Ollama) or https://api.groq.com/openai/v1": "OpenAI 兼容服务器的端点，例如 http://192.168.1.10:11434/v1（Ollama）或 https://api.groq.com/openai/v1",
 	"Key source": "密钥来源",
+	"System-wide AI settings of admin": "admin 的系统级 AI 设置",
+	"Provider, model and API key come from the system settings of admin, tab \"AI\". A change there restarts the instance.": "提供商、模型和 API 密钥来自 admin 系统设置中的“AI”选项卡。在那里更改会重启实例。",
 	"Store the key in the adapter": "将密钥保存在适配器中",
 	"Central credential store": "中央凭据存储",
 	"Not needed for a local server without a key (Ollama, LM Studio)": "无需密钥的本地服务器不需要（Ollama、LM Studio）",

@@ -48,7 +48,7 @@
 		"main.js"
 	],
 	"scripts": {
-		"test:js": "node --test test/unit.test.js test/harness.test.js test/providers.test.js test/deepseek.test.js test/main.test.js test/telegram.test.js test/telegram-flow.test.js test/max-flow.test.js test/admin-chat.test.js test/credentials.test.js test/store.test.js test/features.test.js test/time.test.js",
+		"test:js": "node --test test/unit.test.js test/harness.test.js test/providers.test.js test/deepseek.test.js test/main.test.js test/telegram.test.js test/telegram-flow.test.js test/max-flow.test.js test/admin-chat.test.js test/credentials.test.js test/store.test.js test/features.test.js test/time.test.js test/system-ai.test.js",
 		"test:unit": "npm run test:js",
 		"test:package": "mocha test/package.js --exit",
 		"test:integration": "mocha test/integration.js --exit --config test/mocharc.custom.json",

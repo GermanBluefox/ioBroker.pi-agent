@@ -5,7 +5,15 @@ const crypto = require('node:crypto');
 const { parseAllowlist, parseWriteRules, requestIdFor } = require('./lib/guard');
 const { createIoBrokerExtension } = require('./lib/tools');
 const { createModelsWithKey, listModels, testModel } = require('./lib/providers');
-const { keySourceOf, resolveApiKey } = require('./lib/credentials');
+const {
+    SYSTEM_AI_OBJECT_ID,
+    keySourceOf,
+    usesSystemAi,
+    systemAiForm,
+    systemAiFingerprint,
+    readSystemAi,
+    resolveApiKey,
+} = require('./lib/credentials');
 const { ensureObjects } = require('./lib/objects');
 const { openStore } = require('./lib/store');
 const { resolveTimeZone, timeZoneOptions } = require('./lib/time');
@@ -70,6 +78,41 @@ function chatTarget(target) {
     return target.kind === 'telegram' ? { ...target, kind: 'chat' } : target;
 }
 
+/** Longest instructions a sendTo caller may give its conversation, in characters. */
+const MAX_CALLER_INSTRUCTIONS = 4000;
+
+/**
+ * Target of a sendTo "ask": the root conversation, or a conversation of its own when the caller names one
+ * ("conversation"), e.g. one per room of a voice assistant. Such a conversation keeps its own history and
+ * takes the instructions the caller sends with it.
+ *
+ * @param {unknown} from sender of the message, e.g. "system.adapter.assistant.0"
+ * @param {{ conversation?: unknown, instructions?: unknown }} message message of the caller
+ * @returns {{ kind: 'sendTo', instance?: string, chatId?: string, instructions?: string }} target
+ */
+function sendToTarget(from, message) {
+    // "/" separates instance and chat in the key of telegram.chats
+    const conversation = String(message.conversation ?? '')
+        .trim()
+        .replace(/\//g, '_')
+        .slice(0, 100);
+    if (!conversation) {
+        return { kind: 'sendTo' };
+    }
+    const caller = String(from || '')
+        .replace(/^system\.adapter\./, '')
+        .replace(/\//g, '_');
+    const instructions = String(message.instructions ?? '')
+        .trim()
+        .slice(0, MAX_CALLER_INSTRUCTIONS);
+    return {
+        kind: 'sendTo',
+        instance: `sendTo:${caller || '?'}`,
+        chatId: conversation,
+        ...(instructions ? { instructions } : {}),
+    };
+}
+
 class PiAgent extends utils.Adapter {
     /** @param {Partial<utils.AdapterOptions>} [options] adapter options */
     constructor(options = {}) {
@@ -83,6 +126,10 @@ class PiAgent extends utils.Adapter {
         this.root = null;
         this.context = null;
         this.model = null;
+        /** Provider settings the agent works with: from this instance or from system.ai (see providerSettings). */
+        this.settings = null;
+        /** Instructions of the conversations of sendTo callers, as last configured ("<key>" -> text). */
+        this.callerInstructions = new Map();
         this.allowlist = [];
         /** IANA time zone of the house (setting, else the server's). */
         this.timeZone = 'UTC';
@@ -146,7 +193,8 @@ class PiAgent extends utils.Adapter {
                 this.log.info('Simulation mode is on: write requests are logged but not executed.');
             }
 
-            const apiKey = await this.apiKey();
+            this.settings = await this.providerSettings();
+            const apiKey = this.settings ? await this.apiKey(this.settings) : null;
             if (apiKey === null) {
                 this.markReady();
                 return;
@@ -293,17 +341,74 @@ class PiAgent extends utils.Adapter {
     }
 
     /**
-     * The API key of the configuration, from this instance or from the central credential store of admin.
+     * The provider settings the agent works with: those of this instance, or the system-wide AI settings of admin
+     * (system.ai, see usesSystemAi). With the system-wide settings, system.ai is watched: a change restarts the instance.
+     *
+     * @returns {Promise<{ provider: string, modelId: string, baseUrl: string, keySource: string, apiKey: string, credentialId: string } | null>} settings, null when the agent stays idle
+     */
+    async providerSettings() {
+        const own = {
+            provider: String(this.config.provider || ''),
+            modelId: String(this.config.modelId || '').trim(),
+            baseUrl: String(this.config.baseUrl || '').trim(),
+            keySource: keySourceOf(this.config),
+            apiKey: String(this.config.apiKey || '').trim(),
+            credentialId: String(this.config.credentialId || '').trim(),
+        };
+        if (!usesSystemAi(this.config)) {
+            return own;
+        }
+        const obj = await readSystemAi(this);
+        await this.watchSystemAi(obj);
+        const form = systemAiForm(obj?.native);
+        if (form) {
+            this.log.info(`Using the system-wide AI settings of admin (${SYSTEM_AI_OBJECT_ID})`);
+            return form;
+        }
+        if (keySourceOf(this.config) === 'adapter') {
+            return own; // nothing configured anywhere: apiKey() says that the key is missing
+        }
+        this.log.warn(
+            'The system-wide AI settings have no provider. Set them up in admin (System settings, tab "AI") or choose another key source; the agent stays idle until then.',
+        );
+        return null;
+    }
+
+    /**
+     * Restart the instance when the provider, model, base URL or credential of system.ai changes.
+     *
+     * @param {ioBroker.Object | null} obj system.ai as it is now
+     */
+    async watchSystemAi(obj) {
+        const fingerprint = systemAiFingerprint(obj);
+        this.on('objectChange', (id, changed) => {
+            if (id !== SYSTEM_AI_OBJECT_ID || this.stopping || systemAiFingerprint(changed) === fingerprint) {
+                return;
+            }
+            this.log.info('The system-wide AI settings were changed; the instance restarts');
+            this.restart();
+        });
+        try {
+            await this.subscribeForeignObjectsAsync(SYSTEM_AI_OBJECT_ID);
+        } catch (e) {
+            this.log.warn(`Cannot watch ${SYSTEM_AI_OBJECT_ID}: ${e.message}`);
+        }
+    }
+
+    /**
+     * The API key of the provider settings, from this instance or from the central credential store of admin.
      * A key of the central store is watched: when it changes, the instance restarts with the new one.
      *
+     * @param {{ provider: string, keySource: string, apiKey: string, credentialId: string }} settings provider settings
      * @returns {Promise<string | null>} the key (empty for a custom server without one), null when the agent stays idle
      */
-    async apiKey() {
-        const central = keySourceOf(this.config) === 'central';
-        const credentialId = String(this.config.credentialId || '').trim();
+    async apiKey(settings) {
+        const central = settings.keySource === 'central';
+        const system = usesSystemAi(this.config);
+        const credentialId = settings.credentialId;
         let key = '';
         try {
-            key = await resolveApiKey(this, this.config);
+            key = await resolveApiKey(this, settings);
         } catch (e) {
             this.log.warn(`Cannot read the credential "${credentialId}": ${e.message}; the agent stays idle`);
             return null;
@@ -311,13 +416,16 @@ class PiAgent extends utils.Adapter {
         if (central && credentialId) {
             await this.watchCredential(credentialId);
         }
-        if (!key && this.config.provider !== 'custom') {
+        if (!key && settings.provider !== 'custom') {
             // A setting the user still has to make, not a fault: stay idle and say what is missing.
-            this.log.warn(
-                central
-                    ? 'No credential with an API key chosen. Choose it in the instance settings; the agent stays idle until then.'
-                    : 'No API key configured. Enter it in the instance settings; the agent stays idle until then.',
-            );
+            let hint = 'No API key configured. Enter it in the instance settings';
+            if (system && central) {
+                hint =
+                    'The system-wide AI settings name no credential with an API key. Choose it in admin (System settings, tab "AI")';
+            } else if (central) {
+                hint = 'No credential with an API key chosen. Choose it in the instance settings';
+            }
+            this.log.warn(`${hint}; the agent stays idle until then.`);
             return null;
         }
         return key;
@@ -349,16 +457,13 @@ class PiAgent extends utils.Adapter {
      * @param {string} apiKey API key of the provider (may be empty for a custom server)
      */
     async startHarness(apiKey) {
-        const custom = this.config.provider === 'custom';
-        if (custom && !String(this.config.modelId || '').trim()) {
+        const { provider, modelId: configuredModel, baseUrl } = this.settings;
+        if (provider === 'custom' && !configuredModel) {
             throw new Error('No model configured for the OpenAI-compatible server');
         }
         // The key goes into an in-memory credential store of this instance, never into the process environment.
-        const { spec, models } = await createModelsWithKey(this.config.provider, apiKey, {
-            baseUrl: this.config.baseUrl,
-            modelId: this.config.modelId,
-        });
-        const modelId = String(this.config.modelId || '').trim() || spec.defaultModel;
+        const { spec, models } = await createModelsWithKey(provider, apiKey, { baseUrl, modelId: configuredModel });
+        const modelId = configuredModel || spec.defaultModel;
 
         const [{ BACKGROUND_CONTEXT }, durable, ai] = await Promise.all([
             import('@earendil-works/chord/context'),
@@ -398,7 +503,7 @@ class PiAgent extends utils.Adapter {
         }
         this.harness = await durable.Harness.open(storage, { models, registry }, this.context);
 
-        this.model = { provider: this.config.provider, modelId };
+        this.model = { provider, modelId };
         this.root = await this.harness.root(this.context, { agent: { model: this.model } });
         await this.root.configure({ model: this.model }, this.context); // the model may have changed since the last start
         this.harness.resume();
@@ -457,10 +562,10 @@ class PiAgent extends utils.Adapter {
     }
 
     /**
-     * Conversation of a request: one per messenger chat (per instance) and per user of the admin tab, the root
-     * conversation for everything else.
+     * Conversation of a request: one per messenger chat (per instance), per user of the admin tab and per
+     * conversation a sendTo caller names, the root conversation for everything else.
      *
-     * @param {{ kind: string, instance?: string, chatId?: string }} target where the answer goes
+     * @param {{ kind: string, instance?: string, chatId?: string, instructions?: string }} target where the answer goes
      * @returns {Promise<object>} conversation handle
      */
     async conversationFor(target) {
@@ -469,11 +574,17 @@ class PiAgent extends utils.Adapter {
             return this.root;
         }
         const instance = target.kind === 'admin' ? ADMIN : target.instance;
-        const instructions = this.instructionsOf(instance);
+        // a sendTo caller brings the instructions of its conversation along (e.g. "short, spoken answers")
+        const instructions =
+            target.kind === 'sendTo' ? target.instructions || undefined : this.instructionsOf(instance);
         const known = this.chats[key];
         if (known) {
             const conversation = await this.harness.conversation(known, this.context);
             if (conversation) {
+                if (target.kind === 'sendTo' && instructions && this.callerInstructions.get(key) !== instructions) {
+                    await conversation.configure({ model: this.model, instructions }, this.context);
+                    this.callerInstructions.set(key, instructions);
+                }
                 return conversation;
             }
         }
@@ -481,6 +592,9 @@ class PiAgent extends utils.Adapter {
             { ownership: { kind: 'ownerless' }, agent: { model: this.model, instructions } },
             this.context,
         );
+        if (target.kind === 'sendTo' && instructions) {
+            this.callerInstructions.set(key, instructions);
+        }
         this.chats[key] = created.id;
         // chats run in parallel; chained writes always store the newest map
         this.chatsWrite = (this.chatsWrite || Promise.resolve())
@@ -499,11 +613,15 @@ class PiAgent extends utils.Adapter {
      * Key of a target in telegram.chats (also the key of its queue).
      *
      * @param {{ kind: string, instance?: string, chatId?: string }} target where the answer goes
-     * @returns {string} "<instance>/<chat id>", "admin/<user>", or "" for the root conversation
+     * @returns {string} "<instance>/<chat id>", "admin/<user>", "sendTo:<caller>/<conversation>", or "" for the root conversation
      */
     chatKeyOf(target) {
         if (target.kind === 'admin') {
             return chatKey(ADMIN, target.chatId);
+        }
+        if (target.kind === 'sendTo') {
+            // a sendTo request without a conversation of its own goes to the root conversation, as up to 0.3.0
+            return target.instance && target.chatId ? chatKey(target.instance, target.chatId) : '';
         }
         return target.kind === 'chat' ? chatKey(target.instance, target.chatId) : '';
     }
@@ -887,14 +1005,15 @@ class PiAgent extends utils.Adapter {
 
     /**
      * Provider settings sent by the admin page (unsaved form values); missing fields come from the saved configuration.
+     * With the system-wide AI settings (see usesSystemAi) they come from system.ai, as the agent would use them.
      *
      * @param {unknown} message jsonData of the admin page
-     * @returns {{ provider: string, modelId: string, baseUrl: string, keySource: string, apiKey: string, credentialId: string }} settings
+     * @returns {Promise<{ provider: string, modelId: string, baseUrl: string, keySource: string, apiKey: string, credentialId: string }>} settings
      */
-    providerForm(message) {
+    async providerForm(message) {
         const form = Object(message);
         const pick = name => String(form[name] ?? this.config[name] ?? '').trim();
-        return {
+        const own = {
             provider: pick('provider'),
             modelId: pick('modelId'),
             baseUrl: pick('baseUrl'),
@@ -902,12 +1021,23 @@ class PiAgent extends utils.Adapter {
             apiKey: pick('apiKey'),
             credentialId: pick('credentialId'),
         };
+        if (!usesSystemAi(own)) {
+            return own;
+        }
+        const system = systemAiForm((await readSystemAi(this))?.native);
+        if (system) {
+            return system;
+        }
+        if (keySourceOf(own) === 'system') {
+            throw new Error('The system-wide AI settings have no provider (admin: System settings, tab "AI")');
+        }
+        return own;
     }
 
     /**
      * Ask the configured model one short question.
      *
-     * @param {ReturnType<PiAgent['providerForm']>} form provider settings
+     * @param {Awaited<ReturnType<PiAgent['providerForm']>>} form provider settings
      * @returns {Promise<string>} text for the admin page
      */
     async testConnection(form) {
@@ -933,7 +1063,7 @@ class PiAgent extends utils.Adapter {
             // model field of the admin page; needs no running agent, and an API key only for a custom server
             let options = [];
             try {
-                const form = this.providerForm(obj.message);
+                const form = await this.providerForm(obj.message);
                 options = await listModels(form.provider, {
                     baseUrl: form.baseUrl,
                     apiKey: form.provider === 'custom' ? await resolveApiKey(this, form) : '',
@@ -950,7 +1080,7 @@ class PiAgent extends utils.Adapter {
             // button of the admin page: one short question with the unsaved values of the form
             let answer;
             try {
-                answer = { result: await this.testConnection(this.providerForm(obj.message)) };
+                answer = { result: await this.testConnection(await this.providerForm(obj.message)) };
             } catch (e) {
                 answer = { error: e.message };
             }
@@ -1014,7 +1144,8 @@ class PiAgent extends utils.Adapter {
                 throw new Error('Missing "text"');
             }
             const requestId = message.requestId || requestIdFor(crypto, Date.now(), message.text);
-            result = { answer: await this.ask(String(message.text), String(requestId), { kind: 'sendTo' }) };
+            const target = sendToTarget(obj.from, message);
+            result = { answer: await this.ask(String(message.text), String(requestId), target) };
         } catch (e) {
             result = {
                 error: this.stopping

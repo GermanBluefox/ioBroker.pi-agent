@@ -6,6 +6,40 @@
 			"type": "panel",
 			"label": "General",
 			"items": {
+				"keySource": {
+					"type": "select",
+					"label": "Key source",
+					"options": [
+						{
+							"label": "System-wide AI settings of admin",
+							"value": "system"
+						},
+						{
+							"label": "Store the key in the adapter",
+							"value": "adapter"
+						},
+						{
+							"label": "Central credential store",
+							"value": "central"
+						}
+					],
+					"default": "system",
+					"xs": 12,
+					"sm": 6,
+					"md": 4,
+					"lg": 4,
+					"xl": 4
+				},
+				"_systemAiInfo": {
+					"type": "staticText",
+					"text": "Provider, model and API key come from the system settings of admin, tab \"AI\". A change there restarts the instance.",
+					"hidden": "data.keySource !== 'system'",
+					"xs": 12,
+					"sm": 6,
+					"md": 8,
+					"lg": 8,
+					"xl": 8
+				},
 				"provider": {
 					"type": "select",
 					"label": "Provider",
@@ -23,6 +57,10 @@
 							"value": "deepseek"
 						},
 						{
+							"label": "Google Gemini",
+							"value": "google"
+						},
+						{
 							"label": "OpenAI-compatible (own URL)",
 							"value": "custom"
 						}
@@ -31,39 +69,20 @@
 					"sm": 6,
 					"md": 4,
 					"lg": 4,
-					"xl": 4
+					"xl": 4,
+					"hidden": "data.keySource === 'system'",
+					"newLine": true
 				},
 				"baseUrl": {
 					"type": "text",
 					"label": "Base URL",
 					"help": "Endpoint of the OpenAI-compatible server, e.g. http://192.168.1.10:11434/v1 (Ollama) or https://api.groq.com/openai/v1",
-					"hidden": "data.provider !== 'custom'",
+					"hidden": "data.keySource === 'system' || data.provider !== 'custom'",
 					"xs": 12,
 					"sm": 6,
 					"md": 8,
 					"lg": 8,
 					"xl": 8
-				},
-				"keySource": {
-					"type": "select",
-					"label": "Key source",
-					"options": [
-						{
-							"label": "Store the key in the adapter",
-							"value": "adapter"
-						},
-						{
-							"label": "Central credential store",
-							"value": "central"
-						}
-					],
-					"default": "adapter",
-					"newLine": true,
-					"xs": 12,
-					"sm": 6,
-					"md": 4,
-					"lg": 4,
-					"xl": 4
 				},
 				"apiKey": {
 					"type": "password",
@@ -75,7 +94,7 @@
 					"lg": 4,
 					"xl": 4,
 					"help": "Not needed for a local server without a key (Ollama, LM Studio)",
-					"hidden": "data.keySource === 'central'"
+					"hidden": "data.keySource === 'system' || data.keySource === 'central'"
 				},
 				"credentialId": {
 					"type": "credential",
@@ -107,7 +126,8 @@
 					"sm": 6,
 					"md": 4,
 					"lg": 4,
-					"xl": 4
+					"xl": 4,
+					"hidden": "data.keySource === 'system'"
 				},
 				"testConnection": {
 					"type": "sendTo",
